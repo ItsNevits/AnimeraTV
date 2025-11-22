@@ -26,7 +26,7 @@ export default defineConfig({
           stringArray: true,
           stringArrayEncoding: ["base64"],
           splitStrings: true,
-          debugProtection: true,
+          debugProtection: false,
         },
       }),
     ],
