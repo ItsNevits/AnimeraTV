@@ -65,8 +65,8 @@ An open-source anime information aggregator built with Astro, featuring server-s
 1. **Clone the repository:**
 
    ```sh
-   git clone https://github.com/ItsNevits/anime-web.git
-   cd anime-web
+   git clone https://github.com/ItsNevits/AnimeraTV.git
+   cd AnimeraTV
    ```
 
 2. **Install dependencies:**
