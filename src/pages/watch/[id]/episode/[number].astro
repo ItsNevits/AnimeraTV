@@ -8,7 +8,7 @@ import { fetchAnimeInfo, fetchEpisodeSources } from "@/lib/anime-api";
 import seoConfig from "@/config/seo";
 
 // Check if video player is enabled via environment variable
-const isVideoPlayerEnabled = import.meta.env.ENABLE_VIDEO_PLAYER === 'true';
+const isVideoPlayerEnabled = import.meta.env.ENABLE_VIDEO_PLAYER === "true";
 
 const { id, number } = Astro.params;
 
@@ -113,23 +113,41 @@ if (isVideoPlayerEnabled) {
     </nav>
 
     <!-- Educational/Demo Disclaimer -->
-    {isVideoPlayerEnabled && (
-      <div class="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-950/20 p-4">
-        <div class="flex items-start gap-3">
-          <svg class="mt-0.5 h-5 w-5 shrink-0 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div class="flex-1">
-            <p class="text-sm font-medium text-yellow-200">
-              <strong>Educational Demo:</strong> This video player is for technical demonstration purposes only.
-            </p>
-            <p class="mt-1 text-xs text-yellow-200/70">
-              We do not host any content. Please support the anime industry by using <a href="/about" class="underline hover:text-yellow-100">legal streaming services</a>.
-            </p>
+    {
+      isVideoPlayerEnabled && (
+        <div class="mb-6 rounded-lg border border-yellow-500/30 bg-yellow-950/20 p-4">
+          <div class="flex items-start gap-3">
+            <svg
+              class="mt-0.5 h-5 w-5 shrink-0 text-yellow-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div class="flex-1">
+              <p class="text-sm font-medium text-yellow-200">
+                <strong>Educational Demo:</strong> This video player is for
+                technical demonstration purposes only.
+              </p>
+              <p class="mt-1 text-xs text-yellow-200/70">
+                We do not host any content. Please support the anime industry by
+                using{" "}
+                <a href="/about" class="underline hover:text-yellow-100">
+                  legal streaming services
+                </a>
+                .
+              </p>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )
+    }
 
     <!-- Video Player -->
     <div class="mb-8">
@@ -137,7 +155,7 @@ if (isVideoPlayerEnabled) {
         {
           !isVideoPlayerEnabled ? (
             <div class="flex h-full items-center justify-center">
-              <div class="text-center px-4 max-w-2xl">
+              <div class="text-center px-4 w-full h-full overflow-y-auto">
                 <svg
                   class="mx-auto mb-4 h-16 w-16 text-yellow-500"
                   fill="none"
@@ -155,7 +173,8 @@ if (isVideoPlayerEnabled) {
                   Video Player Disabled
                 </h3>
                 <p class="text-neutral-400 mb-4">
-                  The video player is currently disabled for legal compliance. This is an open-source project for educational purposes only.
+                  The video player is currently disabled for legal compliance.
+                  This is an open-source project for educational purposes only.
                 </p>
                 <p class="text-sm text-neutral-500">
                   You can browse anime information, schedules, and metadata.
