@@ -82,6 +82,7 @@ An open-source anime information aggregator built with Astro, featuring server-s
    ```
 
    Edit `.env` and configure:
+
    - `RESEND_API_KEY` - For contact form functionality
    - `ENABLE_VIDEO_PLAYER` - Set to `true` to enable video player (disabled by default for legal compliance)
 
@@ -125,6 +126,7 @@ Automatically converts JST (Japan Standard Time) to user's local timezone for an
 ### **Video Player**
 
 Optional video player that can be enabled/disabled via environment variable:
+
 - Set `ENABLE_VIDEO_PLAYER=true` to enable
 - Default is `false` for legal compliance
 - When disabled, the site serves as an anime information database
@@ -165,6 +167,7 @@ MIT License - This is an open-source educational project.
 This project is designed as an **anime information database and aggregator** for educational purposes. The video player is disabled by default to ensure legal compliance. This application does not host any copyrighted content on its servers.
 
 **Important:**
+
 - By default, video streaming is **disabled** (`ENABLE_VIDEO_PLAYER=false`)
 - The application displays anime metadata, schedules, and information only
 - Enabling the video player is at your own risk and responsibility
@@ -178,3 +181,9 @@ This project is designed as an **anime information database and aggregator** for
 ---
 
 **Note:** This is an unofficial anime aggregator that embeds third-party content. We do not host any anime content on our servers.
+
+---
+
+<div align="center">
+  <strong>✨ Made with ❤️ and 🌿🚬💨 by Nevits</strong>
+</div>
