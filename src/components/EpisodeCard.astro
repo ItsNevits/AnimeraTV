@@ -1,0 +1,98 @@
+---
+import { Image } from 'astro:assets';
+
+interface Props {
+  id: string;
+  number: number;
+  title?: string;
+  isFiller?: boolean;
+  animeId: string;
+  isActive?: boolean;
+  image?: string;
+}
+
+const { id, number, title, isFiller, animeId, isActive = false, image } = Astro.props;
+---
+
+<a
+  href={`/watch/${animeId}/episode/${number}`}
+  class:list={[
+    "group relative block overflow-hidden rounded-lg border bg-neutral-900 transition-all duration-200",
+    isActive
+      ? "border-purple-500 shadow-lg shadow-purple-500/20"
+      : "border-neutral-800 hover:border-purple-500/50",
+  ]}
+>
+  <!-- Thumbnail -->
+  <div class="relative h-20 w-36 shrink-0 overflow-hidden rounded-md bg-neutral-950">
+    {image ? (
+      <>
+        <Image
+          src={image}
+          alt={`Episode ${number}`}
+          class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          loading="lazy"
+          format="webp"
+          width={144}
+          height={81}
+        />
+        <!-- Gradient overlay for better text visibility -->
+        <div class="absolute inset-0 bg-linear-to-t from-black/60 to-transparent"></div>
+      </>
+    ) : (
+      <div class="flex h-full w-full items-center justify-center bg-neutral-900">
+        <svg class="h-8 w-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+        </svg>
+      </div>
+    )}
+
+    <!-- Episode number badge -->
+    <div class="absolute bottom-1.5 left-1.5">
+      <span
+        class:list={[
+          "inline-flex items-center rounded px-1.5 py-0.5 text-xs font-bold backdrop-blur-sm",
+          isActive
+            ? "bg-white text-black"
+            : "bg-black/70 text-white",
+        ]}
+      >
+        EP {number}
+      </span>
+    </div>
+  </div>
+
+  <!-- Episode info -->
+  <div class="min-w-0 flex-1">
+    <h3
+      class:list={[
+        "mb-1 line-clamp-2 text-sm font-medium leading-snug transition-colors",
+        isActive ? "text-white" : "text-neutral-300 group-hover:text-white",
+      ]}
+    >
+      {title && title !== `Episode ${number}` ? title : `Episode ${number}`}
+    </h3>
+
+    {isFiller && (
+      <span class="inline-flex items-center rounded bg-yellow-600/90 px-2 py-0.5 text-xs font-semibold text-white">
+        Filler
+      </span>
+    )}
+  </div>
+
+  <!-- Play button -->
+  <div class="shrink-0">
+    <div
+      class:list={[
+        "flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200",
+        isActive
+          ? "bg-white text-black"
+          : "bg-neutral-800 text-white group-hover:bg-white group-hover:text-black",
+      ]}
+    >
+      <svg class="ml-0.5 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+        <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path>
+      </svg>
+    </div>
+  </div>
+</a>

@@ -1,0 +1,328 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import AnimeCard from "@/components/AnimeCard.astro";
+import { ANIME } from "@consumet/extensions";
+import { Image } from "astro:assets";
+import seoConfig from "@/config/seo";
+
+const zoro = new ANIME.Zoro();
+
+// Helper to fetch with error handling
+const safeFetch = async (fetchFn: () => Promise<any>, name: string) => {
+  try {
+    return await fetchFn();
+  } catch (error) {
+    console.error(
+      `Error fetching ${name}:`,
+      error instanceof Error ? error.message : "Unknown error"
+    );
+    return { results: [] };
+  }
+};
+
+// Fetch data for different sections
+const [
+  spotlightData,
+  topAiringData,
+  mostPopularData,
+  recentlyUpdatedData,
+  recentlyAddedData,
+] = await Promise.all([
+  safeFetch(() => zoro.fetchSpotlight(), "spotlight"),
+  safeFetch(() => zoro.fetchTopAiring(1), "top airing"),
+  safeFetch(() => zoro.fetchMostPopular(1), "most popular"),
+  safeFetch(() => zoro.fetchRecentlyUpdated(1), "recently updated"),
+  safeFetch(() => zoro.fetchRecentlyAdded(1), "recently added"),
+]);
+
+const spotlight = spotlightData?.results?.[0];
+const topAiring = topAiringData?.results?.slice(0, 6) || [];
+const mostPopular = mostPopularData?.results?.slice(0, 18) || [];
+const recentlyUpdated = recentlyUpdatedData?.results?.slice(0, 6) || [];
+const recentlyAdded = recentlyAddedData?.results?.slice(0, 6) || [];
+
+// Helper function to get title as string
+const getTitle = (title: any): string => {
+  if (typeof title === "string") return title;
+  if (title && typeof title === "object" && "english" in title)
+    return title.english || title.romaji || "";
+  return "";
+};
+
+// Structured data for homepage
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: seoConfig.organization.name,
+  url: seoConfig.siteUrl,
+  logo: `${seoConfig.siteUrl}${seoConfig.organization.logo}`,
+  email: seoConfig.organization.email,
+  description: seoConfig.siteDescription,
+};
+
+const websiteSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: seoConfig.simpleTitle,
+  url: seoConfig.siteUrl,
+  description: seoConfig.siteDescription,
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type": "EntryPoint",
+      urlTemplate: `${seoConfig.siteUrl}/search?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+---
+
+<MainLayout
+  title={seoConfig.siteTitle}
+  description={seoConfig.siteDescription}
+  canonical={seoConfig.siteUrl}
+>
+  <!-- Hero/Spotlight Section with Special For You -->
+  {
+    spotlight ? (
+      <section class="relative min-h-screen overflow-hidden">
+        {/* Background Image with Gradient Overlays */}
+        <div class="absolute inset-0 h-[85vh]">
+          <Image
+            src={spotlight.banner || spotlight.image}
+            alt={getTitle(spotlight.title)}
+            class="h-full w-full object-cover"
+            format="webp"
+            width={200}
+            height={100}
+          />
+          {/* Dark gradient overlays for better text readability and header integration */}
+          <div class="absolute inset-0 bg-linear-to-b from-black/80 via-transparent to-black" />
+          <div class="absolute inset-0 bg-linear-to-r from-black/90 via-black/50 to-black/20" />
+        </div>
+
+        {/* Hero Content */}
+        <div class="relative mx-auto flex h-[60vh] max-w-7xl mt-[85px] items-end px-6 pb-8 lg:px-8">
+          <div class="max-w-2xl space-y-4">
+            {/* Title */}
+            <h1 class="text-2xl font-bold leading-tight text-white md:text-3xl lg:text-4xl">
+              {getTitle(spotlight.title)}
+            </h1>
+
+            {/* Japanese Title */}
+            {spotlight.japaneseTitle && (
+              <p class="text-md text-neutral-300">{spotlight.japaneseTitle}</p>
+            )}
+
+            {/* Description */}
+            {spotlight.description && (
+              <p class="max-w-xl text-base leading-relaxed text-neutral-300 line-clamp-3">
+                {spotlight.description}
+              </p>
+            )}
+
+            {/* Action Buttons */}
+            <div class="flex flex-wrap items-center gap-3 pt-2">
+              <a
+                href={`/anime/${spotlight.id}`}
+                class="flex items-center gap-2 rounded-lg bg-white px-6 py-3 font-semibold text-black transition-all hover:bg-neutral-200"
+              >
+                Learn More
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Recently Updated Section - Overlapping */}
+        {recentlyUpdated.length > 0 && (
+          <div class="relative mx-auto max-w-7xl px-6 lg:px-8 mt-8">
+            <div class="mb-6 flex items-center justify-between">
+              <h2 class="text-2xl font-bold text-white">Recently Updated</h2>
+              <a
+                href="/recent"
+                class="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+              >
+                View All →
+              </a>
+            </div>
+
+            <div class="relative -mx-6 px-6 lg:-mx-8 lg:px-8">
+              <div class="flex justify-between gap-4 overflow-x-auto pb-8 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {recentlyUpdated.map((anime: any) => (
+                  <div class="flex-none w-40 sm:w-44 snap-start">
+                    <AnimeCard
+                      id={anime.id}
+                      title={getTitle(anime.title)}
+                      image={anime.image || ""}
+                      type={anime.type}
+                      sub={anime.sub}
+                      dub={anime.dub}
+                      duration={anime.duration}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
+    ) : (
+      <section class="relative min-h-screen overflow-hidden flex items-center justify-center">
+        <div class="mx-auto max-w-7xl px-6 lg:px-8 pt-32">
+          <div class="text-center max-w-md mx-auto">
+            <svg
+              class="mx-auto mb-4 h-16 w-16 text-neutral-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h3 class="mb-2 text-xl font-semibold text-white">
+              Unable to Load Featured Content
+            </h3>
+            <p class="text-neutral-400 mb-4">
+              The service is temporarily unavailable. This usually happens due
+              to high traffic or server timeouts.
+            </p>
+            <button
+              onclick="window.location.reload()"
+              class="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Try Again
+            </button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Trending Now Section -->
+  {
+    topAiring.length > 0 && (
+      <section class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
+        <div class="mb-8 flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-white">Trending Now</h2>
+          <a
+            href="/top-airing"
+            class="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+          >
+            View All →
+          </a>
+        </div>
+
+        <div class="relative -mx-6 px-6 lg:-mx-8 lg:px-8">
+          <div class="flex justify-between gap-4 overflow-x-auto pb-4 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {topAiring.map((anime: any) => (
+              <div class="flex-none w-40 sm:w-44 snap-start">
+                <AnimeCard
+                  id={anime.id}
+                  title={getTitle(anime.title)}
+                  image={anime.image || ""}
+                  type={anime.type}
+                  sub={anime.sub}
+                  dub={anime.dub}
+                  duration={anime.duration}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Recently Added Section -->
+  {
+    recentlyAdded.length > 0 && (
+      <section class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
+        <div class="mb-8 flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-white">Recently Added</h2>
+          <a
+            href="/recently-added"
+            class="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+          >
+            View All →
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {recentlyAdded.map((anime: any) => (
+            <AnimeCard
+              id={anime.id}
+              title={getTitle(anime.title)}
+              image={anime.image || ""}
+              type={anime.type}
+              sub={anime.sub}
+              dub={anime.dub}
+              duration={anime.duration}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Most Popular Section -->
+  {
+    mostPopular.length > 0 && (
+      <section class="mx-auto max-w-7xl px-6 py-10 lg:px-8">
+        <div class="mb-8 flex items-center justify-between">
+          <h2 class="text-2xl font-bold text-white">Most Popular</h2>
+          <a
+            href="/popular"
+            class="text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+          >
+            View All →
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {mostPopular.map((anime: any) => (
+            <AnimeCard
+              id={anime.id}
+              title={getTitle(anime.title)}
+              image={anime.image || ""}
+              type={anime.type}
+              sub={anime.sub}
+              dub={anime.dub}
+              duration={anime.duration}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- Structured Data -->
+  <Fragment slot="structured-data">
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(organizationSchema)}
+    />
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(websiteSchema)}
+    />
+  </Fragment>
+</MainLayout>

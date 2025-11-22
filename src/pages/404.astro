@@ -1,0 +1,127 @@
+---
+import seoConfig from "@/config/seo";
+import MainLayout from "@/layouts/MainLayout.astro";
+---
+
+<MainLayout
+  title={"404 Not Found - " + seoConfig.simpleTitle}
+  description="Page not found. The anime page you're looking for doesn't exist. Return to our homepage to browse anime."
+  noindex={true}
+>
+  <div
+    class="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-24"
+  >
+    <div class="mx-auto max-w-4xl">
+      <div class="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
+        <div class="order-2 lg:order-1 relative">
+          <!-- Right: Content -->
+          <div class="order-1 lg:order-2 text-center lg:text-left space-y-6">
+            <!-- 404 Number -->
+            <div>
+              <h1
+                class="mb-2 text-4xl leading-none text-white md:text-9xl font-bold"
+              >
+                404
+              </h1>
+              <div
+                class="h-1 w-24 bg-linear-to-r from-white to-transparent rounded-full mx-auto lg:mx-0"
+              >
+              </div>
+            </div>
+
+            <!-- Message -->
+            <div class="space-y-3">
+              <h2 class="text-3xl font-bold text-white sm:text-3xl">
+                Page Not Found!
+              </h2>
+              <p
+                class="text-base text-neutral-400 sm:text-lg max-w-md mx-auto lg:mx-0"
+              >
+                Oops! The anime you're looking for seems to have gone on an
+                adventure. This page doesn't exist in our page.
+              </p>
+              <p class="text-sm text-neutral-500">
+                Let's get you back to watching anime!
+              </p>
+            </div>
+
+            <!-- Action Buttons -->
+            <div
+              class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start pt-4"
+            >
+              <a
+                href="/"
+                class="group inline-flex items-center justify-center gap-3 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-100 hover:shadow-lg"
+              >
+                <svg
+                  class="h-4 w-4 transition-transform group-hover:-translate-x-1"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Return Home
+              </a>
+
+              <a
+                href="/browse"
+                class="group inline-flex items-center justify-center gap-3 rounded-lg border border-neutral-700 bg-neutral-900/50 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-neutral-600 hover:bg-neutral-800/70"
+              >
+                <svg
+                  class="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                Explore Anime
+              </a>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="pt-6 border-neutral-800">
+              <p class="mb-3 pt-3 text-sm font-medium text-neutral-500">
+                Quick Navigation:
+              </p>
+              <div class="flex flex-wrap gap-3 justify-center lg:justify-start">
+                <a
+                  href="/popular"
+                  class="text-sm text-neutral-400 hover:text-white transition-colors"
+                  >Popular</a
+                >
+                <span class="text-neutral-700">•</span>
+                <a
+                  href="/recent"
+                  class="text-sm text-neutral-400 hover:text-white transition-colors"
+                  >Recent</a
+                >
+                <span class="text-neutral-700">•</span>
+                <a
+                  href="/top-airing"
+                  class="text-sm text-neutral-400 hover:text-white transition-colors"
+                  >Top Airing</a
+                >
+                <span class="text-neutral-700">•</span>
+                <a
+                  href="/schedule"
+                  class="text-sm text-neutral-400 hover:text-white transition-colors"
+                  >Schedule</a
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</MainLayout>

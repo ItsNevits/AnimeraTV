@@ -1,0 +1,171 @@
+---
+import "@/styles/global.css";
+import { ClientRouter } from "astro:transitions";
+import Analytics from "@vercel/analytics/astro";
+
+import Footer from "@/components/Footer.astro";
+import Header from "@/components/Header.astro";
+
+import seoConfig from "@/config/seo";
+
+interface Props {
+  title?: string;
+  description?: string;
+  image?: string;
+  canonical?: string;
+  type?: "website" | "article" | "video.other";
+  keywords?: string[];
+  noindex?: boolean;
+}
+
+const {
+  title = seoConfig.siteTitle,
+  description = seoConfig.siteDescription,
+  image = seoConfig.defaultImage,
+  canonical,
+  type = "website",
+  keywords = seoConfig.keywords,
+  noindex = false,
+} = Astro.props;
+
+// Ensure absolute URLs for Open Graph
+const fullImageUrl = image.startsWith("http")
+  ? image
+  : `${seoConfig.siteUrl}${image}`;
+const canonicalUrl = canonical || Astro.url.pathname;
+const fullCanonicalUrl = canonicalUrl.startsWith("http")
+  ? canonicalUrl
+  : `${seoConfig.siteUrl}${canonicalUrl}`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <!-- Sitemap -->
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <!-- Google Site Verification -->
+    <meta
+      name="google-site-verification"
+      content="-qq24dZhxpcqnIFgA0cWKd4IaN9bNYU3J7e5gV_qtd4"
+    />
+
+    <!-- Microsoft Site Verification -->
+    <meta name="msvalidate.01" content="1720E4BBCCA9E707BF295985CA319531" />
+
+    <!-- Yandex Site Verification -->
+    <meta name="yandex-verification" content="8b6be73392fc3a81" />
+
+    <!-- Favicon Links -->
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+
+    <!-- Primary Meta Tags -->
+    <title>{title}</title>
+    <meta name="title" content={title} />
+    <meta name="description" content={description} />
+    <meta name="keywords" content={keywords.join(", ")} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <link rel="canonical" href={fullCanonicalUrl} />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content={type} />
+    <meta property="og:url" content={fullCanonicalUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={fullImageUrl} />
+    <meta property="og:site_name" content={seoConfig.simpleTitle} />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content={fullCanonicalUrl} />
+    <meta property="twitter:title" content={title} />
+    <meta property="twitter:description" content={description} />
+    <meta property="twitter:image" content={fullImageUrl} />
+    {
+      seoConfig.twitterHandle && (
+        <meta property="twitter:site" content={seoConfig.twitterHandle} />
+      )
+    }
+
+    <!-- Structured Data Slot -->
+    <slot name="structured-data" />
+
+    <ClientRouter fallback="none" />
+    <Analytics />
+  </head>
+  <body class="bg-black">
+    <!-- Progress Bar -->
+    <div
+      id="page-progress"
+      class="fixed left-0 right-0 top-0 h-1 bg-white shadow-lg shadow-white/20"
+      style="transform: scaleX(0); transform-origin: left; z-index: 9999; transition: transform 0.3s ease-out;"
+    >
+    </div>
+
+    <Header />
+
+    <main class="min-h-screen">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      // Progress bar animation
+      document.addEventListener("astro:before-preparation", () => {
+        const progressBar = document.getElementById("page-progress");
+        if (progressBar) {
+          // Start progress animation
+          progressBar.style.transform = "scaleX(0)";
+          progressBar.style.transition = "transform 0.3s ease-out";
+
+          // Animate to 30%
+          setTimeout(() => {
+            progressBar.style.transform = "scaleX(0.3)";
+          }, 50);
+
+          // Animate to 60%
+          setTimeout(() => {
+            progressBar.style.transform = "scaleX(0.6)";
+          }, 200);
+        }
+      });
+
+      document.addEventListener("astro:after-preparation", () => {
+        const progressBar = document.getElementById("page-progress");
+        if (progressBar) {
+          // Animate to 90%
+          progressBar.style.transform = "scaleX(0.9)";
+        }
+      });
+
+      document.addEventListener("astro:page-load", () => {
+        const progressBar = document.getElementById("page-progress");
+        if (progressBar) {
+          // Complete progress
+          progressBar.style.transform = "scaleX(1)";
+
+          // Fade out
+          setTimeout(() => {
+            progressBar.style.transition =
+              "transform 0.3s ease-out, opacity 0.3s ease-out";
+            progressBar.style.opacity = "0";
+          }, 100);
+
+          // Reset for next navigation
+          setTimeout(() => {
+            progressBar.style.opacity = "1";
+            progressBar.style.transform = "scaleX(0)";
+          }, 400);
+        }
+      });
+    </script>
+  </body>
+</html>

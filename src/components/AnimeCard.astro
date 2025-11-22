@@ -1,0 +1,134 @@
+---
+import { Image } from 'astro:assets';
+
+interface Props {
+  id: string;
+  title: string;
+  image: string;
+  type?: string;
+  sub?: number;
+  dub?: number;
+  episodes?: number;
+  duration?: string;
+  jstTime?: string; // JST time for schedule display
+  scheduleDate?: string; // Date for schedule
+}
+
+const { id, title, image, type, sub, dub, episodes, duration, jstTime, scheduleDate } = Astro.props;
+---
+
+<a
+  href={`/anime/${id}`}
+  class="group relative block overflow-hidden rounded-lg transition-transform duration-200 hover:scale-105"
+  title={title}
+>
+  <!-- Image Container -->
+  <div class="aspect-2/3 overflow-hidden rounded-md">
+    
+    <Image 
+      src={image}
+      alt={title}
+      class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
+      format="webp"
+      width={200}
+      height={300}
+    />
+  </div>
+
+  <!-- Gradient Overlay -->
+  <div
+    class="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent opacity-60 transition-opacity group-hover:opacity-80"
+  >
+  </div>
+
+  <!-- Content Overlay -->
+  <div class="absolute inset-0 flex flex-col justify-end p-3">
+    <!-- Title and Type -->
+    <div class="translate-y-0 transition-transform duration-300">
+      <h3
+        class="mb-1.5 text-sm font-semibold leading-tight text-white line-clamp-2"
+      >
+        {title}
+      </h3>
+
+      <!-- Meta Info -->
+      <div class="flex items-center gap-1.5 text-xs text-neutral-300">
+        {type && <span class="text-neutral-400 font-medium">{type}</span>}
+        {type && duration && <span class="text-neutral-500">•</span>}
+        {duration && <span class="text-neutral-400">{duration}</span>}
+      </div>
+
+      <!-- JST Time (will be converted to local on client) -->
+      {jstTime && (
+        <div class="mt-1.5 text-xs text-neutral-300">
+          <span class="time-display" data-jst-time={jstTime} data-schedule-date={scheduleDate}>
+            {jstTime}
+          </span>
+        </div>
+      )}
+    </div>
+  </div>
+</a>
+
+{jstTime && (
+  <script>
+    // Import timezone utility inline for client-side execution
+    function parseJSTToLocal(jstTimeString: string, dateString?: string) {
+      if (!jstTimeString) return { localTime: "", jstTime: "" };
+
+      const [hours, minutes] = jstTimeString.split(":").map(Number);
+      const baseDate = dateString ? new Date(dateString + "T00:00:00Z") : new Date();
+
+      const jstDate = new Date(
+        Date.UTC(
+          baseDate.getUTCFullYear(),
+          baseDate.getUTCMonth(),
+          baseDate.getUTCDate(),
+          hours - 9,
+          minutes,
+          0
+        )
+      );
+
+      const localHours = jstDate.getHours();
+      const localMinutes = jstDate.getMinutes();
+      const localTime = `${localHours.toString().padStart(2, "0")}:${localMinutes.toString().padStart(2, "0")}`;
+
+      return { localTime, jstTime: jstTimeString };
+    }
+
+    // Convert all time displays on page load
+    document.addEventListener("DOMContentLoaded", () => {
+      const timeDisplays = document.querySelectorAll(".time-display");
+
+      timeDisplays.forEach((display) => {
+        const jstTime = display.getAttribute("data-jst-time");
+        const scheduleDate = display.getAttribute("data-schedule-date");
+
+        if (jstTime) {
+          const { localTime } = parseJSTToLocal(jstTime, scheduleDate || undefined);
+          if (localTime) {
+            display.textContent = localTime;
+          }
+        }
+      });
+    });
+
+    // Also run on astro:page-load for client-side navigation
+    document.addEventListener("astro:page-load", () => {
+      const timeDisplays = document.querySelectorAll(".time-display");
+
+      timeDisplays.forEach((display) => {
+        const jstTime = display.getAttribute("data-jst-time");
+        const scheduleDate = display.getAttribute("data-schedule-date");
+
+        if (jstTime) {
+          const { localTime } = parseJSTToLocal(jstTime, scheduleDate || undefined);
+          if (localTime) {
+            display.textContent = localTime;
+          }
+        }
+      });
+    });
+  </script>
+)}

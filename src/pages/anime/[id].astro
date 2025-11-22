@@ -1,0 +1,362 @@
+---
+export const prerender = false;
+import { Image } from "astro:assets";
+
+import MainLayout from "@/layouts/MainLayout.astro";
+import AnimeCard from "@/components/AnimeCard.astro";
+import EpisodeGrid from "@/components/EpisodeGrid.astro";
+import { fetchAnimeInfo, fetchMostPopular } from "@/lib/anime-api";
+import seoConfig from "@/config/seo";
+
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect("/");
+}
+
+// Get sort parameter from URL (default: desc = newest first)
+const url = new URL(Astro.request.url);
+const sortOrder = url.searchParams.get("sort") || "desc";
+
+// Fetch anime info (with cache) with error handling
+let animeInfo: any;
+try {
+  animeInfo = await fetchAnimeInfo(id);
+} catch (error) {
+  console.error(
+    `Error fetching anime ${id}:`,
+    error instanceof Error ? error.message : "Unknown error"
+  );
+  return Astro.redirect("/404");
+}
+
+// Find first episode (episode 1) for Watch Now button
+const firstEpisode =
+  animeInfo.episodes?.find((ep: any) => ep.number === 1) ||
+  animeInfo.episodes?.[0];
+
+// Sort episodes on server-side
+if (animeInfo.episodes && animeInfo.episodes.length > 0) {
+  animeInfo.episodes = [...animeInfo.episodes].sort((a: any, b: any) => {
+    return sortOrder === "desc" ? b.number - a.number : a.number - b.number;
+  });
+}
+
+// Helper function to get title as string
+const getTitle = (title: any): string => {
+  if (typeof title === "string") return title;
+  if (title && typeof title === "object" && "english" in title)
+    return title.english || title.romaji || "";
+  return "";
+};
+
+// Fetch recommendations (most popular as fallback) (with cache) with error handling
+let recommendations: any = { results: [] };
+try {
+  recommendations = await fetchMostPopular(1);
+} catch (error) {
+  console.error(
+    "Error fetching recommendations:",
+    error instanceof Error ? error.message : "Unknown error"
+  );
+}
+const relatedAnime = recommendations?.results?.slice(0, 6) || [];
+
+// SEO description from synopsis or default
+const description = animeInfo.description
+  ? animeInfo.description.replace(/<[^>]*>/g, "").substring(0, 160) + "..."
+  : `Watch ${getTitle(animeInfo.title)} online. ${animeInfo.type || "Anime"} with ${animeInfo.totalEpisodes || "multiple"} episodes.`;
+
+// Generate specific keywords for this anime
+const animeKeywords = [
+  ...seoConfig.keywords,
+  getTitle(animeInfo.title),
+  ...(animeInfo.genres || []),
+  animeInfo.type,
+  "watch online",
+].filter(Boolean);
+---
+
+<MainLayout
+  title={getTitle(animeInfo.title) + " - " + seoConfig.simpleTitle}
+  description={description}
+  image={animeInfo.image}
+  keywords={animeKeywords}
+  type="video.other"
+>
+  <!-- Hero Section with Anime Info -->
+  <section class="relative overflow-hidden pt-20">
+    <!-- Background Image -->
+    <div class="absolute inset-0 h-[70vh]">
+      <Image
+        src={animeInfo.image}
+        alt={getTitle(animeInfo.title)}
+        class="h-full w-full object-cover"
+        format="webp"
+        width={700}
+        height={1050}
+      />
+      <div
+        class="absolute inset-0 bg-linear-to-b from-black/80 via-black/50 to-black"
+      >
+      </div>
+      <div
+        class="absolute inset-0 bg-linear-to-r from-black/90 via-black/60 to-transparent"
+      >
+      </div>
+    </div>
+
+    <div class="relative mx-auto max-w-7xl px-6 py-16 lg:px-8">
+      <div class="flex flex-col gap-8 md:flex-row md:items-end">
+        <!-- Poster Image -->
+        <div class="shrink-0">
+          <Image
+            src={animeInfo.image}
+            alt={getTitle(animeInfo.title)}
+            class="w-full md:w-[280px] rounded-lg shadow-2xl"
+            format="webp"
+            width={280}
+            height={420}
+          />
+        </div>
+
+        <!-- Anime Info -->
+        <div class="flex-1 pb-4">
+          <h1
+            class="mb-3 text-4xl font-bold text-white md:text-5xl lg:text-6xl"
+          >
+            {getTitle(animeInfo.title)}
+          </h1>
+
+          {
+            animeInfo.otherName && (
+              <p class="mb-6 text-lg text-neutral-300">{animeInfo.otherName}</p>
+            )
+          }
+
+          <!-- Rating and Metadata -->
+          <div class="mb-6 flex flex-wrap items-center gap-3">
+            {
+              animeInfo.type && (
+                <span class="text-sm font-medium text-neutral-300">
+                  {animeInfo.type}
+                </span>
+              )
+            }
+            {
+              animeInfo.type && animeInfo.releaseDate && (
+                <span class="text-neutral-500">•</span>
+              )
+            }
+            {
+              animeInfo.releaseDate && (
+                <span class="text-sm font-medium text-neutral-300">
+                  {animeInfo.releaseDate}
+                </span>
+              )
+            }
+            {
+              animeInfo.releaseDate && animeInfo.totalEpisodes && (
+                <span class="text-neutral-500">•</span>
+              )
+            }
+            {
+              animeInfo.totalEpisodes && (
+                <span class="text-sm font-medium text-neutral-300">
+                  {animeInfo.totalEpisodes} Episodes
+                </span>
+              )
+            }
+          </div>
+
+          <!-- Action Buttons -->
+          {
+            firstEpisode && (
+              <div class="flex flex-wrap gap-3">
+                <a
+                  href={`/watch/${id}/episode/${firstEpisode.number}`}
+                  class="flex items-center gap-2 rounded-lg bg-white px-6 py-3 font-semibold text-black transition-all hover:bg-neutral-200"
+                >
+                  <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
+                  </svg>
+                  Watch Now
+                </a>
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Content Section -->
+  <section class="mx-auto max-w-7xl px-6 lg:px-8">
+    <div class="grid gap-8 lg:grid-cols-3">
+      <!-- Main Content -->
+      <div class="lg:col-span-2 space-y-8">
+        <!-- Description -->
+        {
+          animeInfo.description && (
+            <div>
+              <h3 class="mb-4 text-xl font-bold text-white">Overview</h3>
+              <div class="synopsis-container">
+                <div
+                  id="synopsis-text"
+                  class="text-base leading-relaxed text-neutral-300 line-clamp-6 transition-all duration-300"
+                  set:html={animeInfo.description}
+                />
+                <button
+                  id="synopsis-toggle"
+                  class="cursor-pointer mt-2 text-sm font-medium text-neutral-400 hover:text-white transition-colors flex items-center gap-1"
+                >
+                  <span id="toggle-text">Read more</span>
+                  <svg
+                    id="toggle-icon"
+                    class="h-4 w-4 transition-transform duration-300"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )
+        }
+
+        <!-- Genres -->
+        {
+          animeInfo.genres && animeInfo.genres.length > 0 && (
+            <div class="select-none">
+              <h3 class="mb-4 text-xl font-bold text-white">Genres</h3>
+              <div class="flex flex-wrap gap-2">
+                {animeInfo.genres.map((genre: string) => (
+                  <span class="rounded-full bg-neutral-800/50 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700 transition-colors">
+                    {genre}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )
+        }
+      </div>
+
+      <!-- Sidebar -->
+      <div class="space-y-6">
+        <div class="rounded-lg bg-neutral-900/50 p-6 backdrop-blur">
+          <h3 class="mb-4 text-lg font-bold text-white">Information</h3>
+          <div class="space-y-3">
+            {
+              animeInfo.status && (
+                <div class="flex justify-between">
+                  <span class="text-sm text-neutral-400">Status</span>
+                  <span class="text-sm font-medium text-white">
+                    {animeInfo.status}
+                  </span>
+                </div>
+              )
+            }
+            {
+              animeInfo.type && (
+                <div class="flex justify-between">
+                  <span class="text-sm text-neutral-400">Type</span>
+                  <span class="text-sm font-medium text-white">
+                    {animeInfo.type}
+                  </span>
+                </div>
+              )
+            }
+            {
+              animeInfo.totalEpisodes !== undefined && (
+                <div class="flex justify-between">
+                  <span class="text-sm text-neutral-400">Episodes</span>
+                  <span class="text-sm font-medium text-white">
+                    {animeInfo.totalEpisodes}
+                  </span>
+                </div>
+              )
+            }
+            {
+              animeInfo.releaseDate && (
+                <div class="flex justify-between">
+                  <span class="text-sm text-neutral-400">Released</span>
+                  <span class="text-sm font-medium text-white">
+                    {animeInfo.releaseDate}
+                  </span>
+                </div>
+              )
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Episodes Section -->
+  <div class="mx-auto max-w-7xl px-6 lg:px-8">
+    <EpisodeGrid
+      episodes={animeInfo.episodes || []}
+      animeId={id}
+      animeImage={animeInfo.image}
+      showTitle={true}
+      showSort={true}
+      sortOrder={sortOrder}
+    />
+  </div>
+
+  <!-- Recommendations Section -->
+  {
+    relatedAnime.length > 0 && (
+      <section class="mx-auto max-w-7xl px-6 py-12 lg:px-8">
+        <h2 class="mb-8 text-2xl font-bold text-white">You Might Also Like</h2>
+
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {relatedAnime.map((anime: any) => (
+            <AnimeCard
+              id={anime.id}
+              title={getTitle(anime.title)}
+              image={anime.image || ""}
+              type={anime.type}
+              sub={anime.sub}
+              dub={anime.dub}
+              duration={anime.duration}
+            />
+          ))}
+        </div>
+      </section>
+    )
+  }
+</MainLayout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const synopsisText = document.getElementById("synopsis-text");
+    const toggleButton = document.getElementById("synopsis-toggle");
+    const toggleText = document.getElementById("toggle-text");
+    const toggleIcon = document.getElementById("toggle-icon");
+    let isExpanded = false;
+
+    if (toggleButton && synopsisText && toggleText && toggleIcon) {
+      toggleButton.addEventListener("click", () => {
+        isExpanded = !isExpanded;
+
+        if (isExpanded) {
+          synopsisText.classList.remove("line-clamp-6");
+          toggleText.textContent = "Read less";
+          toggleIcon.style.transform = "rotate(180deg)";
+        } else {
+          synopsisText.classList.add("line-clamp-6");
+          toggleText.textContent = "Read more";
+          toggleIcon.style.transform = "rotate(0deg)";
+        }
+      });
+    }
+  });
+</script>

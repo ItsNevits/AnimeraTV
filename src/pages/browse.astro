@@ -1,0 +1,548 @@
+---
+import MainLayout from "@/layouts/MainLayout.astro";
+import AnimeCard from "@/components/AnimeCard.astro";
+import { getAnimeProvider } from "@/lib/anime-api";
+import seoConfig from "@/config/seo";
+
+const zoro = getAnimeProvider("zoro");
+
+// Get filter parameters from URL
+const url = new URL(Astro.request.url);
+const currentPage = parseInt(url.searchParams.get("page") || "1");
+const type = url.searchParams.get("type") || undefined;
+const status = url.searchParams.get("status") || undefined;
+const season = url.searchParams.get("season") || undefined;
+const year = url.searchParams.get("year") || undefined;
+const sort = url.searchParams.get("sort") || "recently_updated";
+const genresParam = url.searchParams.get("genres") || "";
+const genres = genresParam ? genresParam.split(",") : undefined;
+
+// Build start date if year is provided
+const startDate = year
+  ? { year: parseInt(year), month: 1, day: 1 }
+  : undefined;
+const endDate = year
+  ? { year: parseInt(year), month: 12, day: 31 }
+  : undefined;
+
+// Fetch anime with advanced filters with error handling
+let searchResults: any = { results: [], hasNextPage: false, totalPages: 1 };
+try {
+  searchResults = await zoro.fetchAdvancedSearch(
+    currentPage,
+    type,
+    status,
+    undefined, // rated
+    undefined, // score
+    season,
+    undefined, // language
+    startDate,
+    endDate,
+    sort,
+    genres
+  );
+} catch (error) {
+  console.error('Error fetching browse results:', error instanceof Error ? error.message : 'Unknown error');
+}
+
+const animeList = searchResults.results || [];
+const hasNextPage = searchResults.hasNextPage || false;
+const totalPages = searchResults.totalPages || 1;
+
+// Available filter options
+const years = Array.from({ length: 30 }, (_, i) => new Date().getFullYear() - i);
+const seasons = ["winter", "spring", "summer", "fall"];
+const types = [
+  { value: "tv", label: "TV" },
+  { value: "movie", label: "Movie" },
+  { value: "ova", label: "OVA" },
+  { value: "ona", label: "ONA" },
+  { value: "special", label: "Special" },
+  { value: "music", label: "Music" },
+];
+const statuses = [
+  { value: "currently_airing", label: "Currently Airing" },
+  { value: "finished_airing", label: "Finished Airing" },
+  { value: "not_yet_aired", label: "Not Yet Aired" },
+];
+const sortOptions = [
+  { value: "recently_updated", label: "Recently Updated" },
+  { value: "recently_added", label: "Recently Added" },
+  { value: "score", label: "Score" },
+  { value: "name_az", label: "Name (A-Z)" },
+  { value: "released_date", label: "Release Date" },
+  { value: "most_watched", label: "Most Watched" },
+];
+const genreOptions = [
+  "action", "adventure", "cars", "comedy", "dementia", "demons", "mystery",
+  "drama", "ecchi", "fantasy", "game", "historical", "horror", "kids",
+  "magic", "martial_arts", "mecha", "music", "parody", "samurai", "romance",
+  "school", "sci_fi", "shoujo", "shoujo_ai", "shounen", "shounen_ai",
+  "space", "sports", "super_power", "vampire", "harem", "military",
+  "slice_of_life", "supernatural", "police", "psychological", "thriller",
+  "seinen", "isekai", "josei"
+];
+
+// Helper to build filter URL
+function buildFilterUrl(params: Record<string, string | undefined>): string {
+  const newUrl = new URL(Astro.request.url);
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) {
+      newUrl.searchParams.set(key, value);
+    } else {
+      newUrl.searchParams.delete(key);
+    }
+  });
+  newUrl.searchParams.delete("page"); // Reset to page 1 when filters change
+  return newUrl.pathname + newUrl.search;
+}
+
+// Helper to check if a value is active
+function isActive(param: string, value: string): boolean {
+  return url.searchParams.get(param) === value;
+}
+
+// Helper to check if a genre is selected
+function isGenreSelected(genre: string): boolean {
+  return genresParam.split(",").includes(genre);
+}
+
+// Helper to capitalize
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+---
+
+<MainLayout
+  title={"Browse Anime - " + seoConfig.simpleTitle}
+  description="Browse and filter anime by genre, year, season, type, and status. Discover your next favorite anime series with advanced search filters."
+  keywords={[...seoConfig.keywords, "browse anime", "filter anime", "anime genres", "anime by year", "anime by season"]}
+>
+  <main class="min-h-screen bg-black px-4 pb-12 pt-32">
+    <div class="mx-auto max-w-7xl">
+      <!-- Header -->
+      <div class="mb-8 flex items-center justify-between">
+        <h1 class="text-2xl font-bold text-white">Browse Anime</h1>
+
+        <!-- Mobile Filter Toggle -->
+        <button
+          id="filter-toggle-btn"
+          class="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-neutral-700 lg:hidden"
+        >
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+          </svg>
+          Filters
+        </button>
+      </div>
+
+      <div class="flex gap-8">
+        <!-- Left Sidebar - Filters -->
+        <aside id="filters-sidebar" class="fixed inset-0 z-40 hidden bg-black/50 lg:relative lg:z-auto lg:block lg:bg-transparent">
+          <div class="absolute right-0 top-0 h-full w-full space-y-6 overflow-y-auto bg-neutral-900 p-6 pt-24 lg:relative lg:w-64 lg:bg-transparent lg:p-0 lg:pt-0">
+            <!-- Close button for mobile -->
+            <button
+              id="close-filters-btn"
+              class="mb-4 flex w-full items-center justify-between text-sm font-semibold text-white lg:hidden"
+            >
+              <span>Filters</span>
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </button>
+          <!-- Year Filter -->
+          <div>
+            <button
+              class="filter-toggle mb-3 flex w-full items-center justify-between text-sm font-semibold text-white"
+              data-filter="year"
+            >
+              Year
+              <svg
+                class="filter-icon h-4 w-4 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div class="filter-content max-h-48 space-y-2 overflow-y-auto" data-filter="year">
+              <a
+                href={buildFilterUrl({ year: undefined })}
+                class={`block rounded px-2 py-1.5 text-sm transition-colors ${
+                  !year
+                    ? "bg-neutral-800 text-white"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+              >
+                All Years
+              </a>
+              {
+                years.slice(0, 10).map((y) => (
+                  <a
+                    href={buildFilterUrl({ year: y.toString() })}
+                    class={`block rounded px-2 py-1.5 text-sm transition-colors ${
+                      year === y.toString()
+                        ? "bg-neutral-800 text-white"
+                        : "text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {y}
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+
+          <!-- Season Filter -->
+          <div>
+            <button
+              class="filter-toggle mb-3 flex w-full items-center justify-between text-sm font-semibold text-white"
+              data-filter="season"
+            >
+              Season
+              <svg
+                class="filter-icon h-4 w-4 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div class="filter-content flex flex-wrap gap-2" data-filter="season">
+              {
+                seasons.map((s) => (
+                  <a
+                    href={buildFilterUrl({ season: s })}
+                    class={`rounded border px-2 py-1 text-xs transition-colors ${
+                      season === s
+                        ? "border-neutral-600 bg-neutral-800 text-white"
+                        : "border-neutral-700 text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {capitalize(s)}
+                  </a>
+                ))
+              }
+            </div>
+          </div>
+
+          <!-- Format Filter -->
+          <div>
+            <button
+              class="filter-toggle mb-3 flex w-full items-center justify-between text-sm font-semibold text-white"
+              data-filter="format"
+            >
+              Format
+              <svg
+                class="filter-icon h-4 w-4 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div class="filter-content max-h-48 space-y-2 overflow-y-auto" data-filter="format">
+              {
+                types.map((t) => (
+                  <label class="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={type === t.value}
+                      class="cursor-pointer h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-white"
+                      onclick={`window.location.href='${buildFilterUrl({ type: type === t.value ? undefined : t.value })}'`}
+                    />
+                    <span class="text-sm text-neutral-400">{t.label}</span>
+                  </label>
+                ))
+              }
+            </div>
+          </div>
+
+          <!-- Airing Status Filter -->
+          <div>
+            <button
+              class="filter-toggle mb-3 flex w-full items-center justify-between text-sm font-semibold text-white"
+              data-filter="status"
+            >
+              Airing Status
+              <svg
+                class="filter-icon h-4 w-4 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div class="filter-content max-h-48 space-y-2 overflow-y-auto" data-filter="status">
+              {
+                statuses.map((s) => (
+                  <label class="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={status === s.value}
+                      class="cursor-pointer h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-white"
+                      onclick={`window.location.href='${buildFilterUrl({ status: status === s.value ? undefined : s.value })}'`}
+                    />
+                    <span class="text-sm text-neutral-400">{s.label}</span>
+                  </label>
+                ))
+              }
+            </div>
+          </div>
+
+          <!-- Genres Filter -->
+          <div>
+            <button
+              class="filter-toggle mb-3 flex w-full items-center justify-between text-sm font-semibold text-white"
+              data-filter="genres"
+            >
+              Genres
+              <svg
+                class="filter-icon h-4 w-4 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+            <div class="filter-content max-h-60 space-y-2 overflow-y-auto" data-filter="genres">
+              {
+                genreOptions.map((genre) => {
+                  const selected = isGenreSelected(genre);
+                  const currentGenres = genresParam.split(",").filter(Boolean);
+                  const newGenres = selected
+                    ? currentGenres.filter((g) => g !== genre)
+                    : [...currentGenres, genre];
+                  const genresStr = newGenres.join(",");
+
+                  return (
+                    <label class="flex cursor-pointer items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        class="cursor-pointer h-4 w-4 rounded border-neutral-700 bg-neutral-800 text-white"
+                        onclick={`window.location.href='${buildFilterUrl({ genres: genresStr || undefined })}'`}
+                      />
+                      <span class="text-sm text-neutral-400">
+                        {genre.split("_").map(capitalize).join(" ")}
+                      </span>
+                    </label>
+                  );
+                })
+              }
+            </div>
+          </div>
+          </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="flex-1">
+          <!-- Sort By -->
+          <div class="mb-6 flex items-center justify-between">
+            <div class="text-sm text-neutral-400">
+              {animeList.length > 0 && `Page ${currentPage} of ${totalPages}`}
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-neutral-400">Sort By</span>
+              <select
+                class="cursor-pointer rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm text-white"
+                onchange="window.location.href = this.value"
+              >
+                {
+                  sortOptions.map((s) => (
+                    <option
+                      value={buildFilterUrl({ sort: s.value })}
+                      selected={sort === s.value}
+                    >
+                      {s.label}
+                    </option>
+                  ))
+                }
+              </select>
+            </div>
+          </div>
+
+          <!-- Results -->
+          {
+            animeList.length > 0 ? (
+              <>
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {animeList.map((anime: any) => (
+                    <AnimeCard
+                      id={anime.id}
+                      title={anime.title}
+                      image={anime.image}
+                      type={anime.type}
+                      sub={anime.subOrDub === "sub" || anime.subOrDub === "both" ? 1 : 0}
+                      dub={anime.subOrDub === "dub" || anime.subOrDub === "both" ? 1 : 0}
+                    />
+                  ))}
+                </div>
+
+                <!-- Pagination -->
+                {totalPages > 1 && (
+                  <div class="mt-12 flex items-center justify-center gap-4">
+                    {currentPage > 1 && (
+                      <a
+                        href={`/browse?${new URLSearchParams({
+                          ...Object.fromEntries(url.searchParams),
+                          page: (currentPage - 1).toString(),
+                        })}`}
+                        class="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-5 py-2.5 text-sm font-semibold text-white transition-all hover:border-neutral-600 hover:bg-neutral-700"
+                      >
+                        <svg
+                          class="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M15 19l-7-7 7-7"
+                          />
+                        </svg>
+                        Previous
+                      </a>
+                    )}
+
+                    <span class="text-sm text-neutral-400">
+                      Page {currentPage} of {totalPages}
+                    </span>
+
+                    {hasNextPage && currentPage < totalPages && (
+                      <a
+                        href={`/browse?${new URLSearchParams({
+                          ...Object.fromEntries(url.searchParams),
+                          page: (currentPage + 1).toString(),
+                        })}`}
+                        class="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+                      >
+                        Next
+                        <svg
+                          class="h-4 w-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5l7 7-7 7"
+                          />
+                        </svg>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div class="flex min-h-[400px] items-center justify-center">
+                <div class="text-center max-w-md">
+                  <svg
+                    class="mx-auto mb-4 h-16 w-16 text-neutral-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h3 class="mb-2 text-xl font-semibold text-white">
+                    Unable to Load Results
+                  </h3>
+                  <p class="text-neutral-400 mb-4">
+                    The service is temporarily unavailable. This usually happens due to high traffic or server timeouts.
+                  </p>
+                  <button
+                    onclick="window.location.reload()"
+                    class="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+                  >
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Try Again
+                  </button>
+                </div>
+              </div>
+            )
+          }
+        </div>
+      </div>
+    </div>
+  </main>
+</Layout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    // Mobile filters toggle
+    const filterToggleBtn = document.getElementById("filter-toggle-btn");
+    const closeFiltersBtn = document.getElementById("close-filters-btn");
+    const filtersSidebar = document.getElementById("filters-sidebar");
+
+    filterToggleBtn?.addEventListener("click", () => {
+      filtersSidebar?.classList.remove("hidden");
+    });
+
+    closeFiltersBtn?.addEventListener("click", () => {
+      filtersSidebar?.classList.add("hidden");
+    });
+
+    // Close filters when clicking on backdrop (mobile)
+    filtersSidebar?.addEventListener("click", (e) => {
+      if (e.target === filtersSidebar) {
+        filtersSidebar.classList.add("hidden");
+      }
+    });
+
+    // Collapsible filters
+    const filterToggles = document.querySelectorAll(".filter-toggle");
+
+    filterToggles.forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const filterId = toggle.getAttribute("data-filter");
+        const content = document.querySelector(`.filter-content[data-filter="${filterId}"]`);
+        const icon = toggle.querySelector(".filter-icon");
+
+        if (content && icon) {
+          // Toggle content visibility
+          content.classList.toggle("hidden");
+
+          // Rotate icon
+          icon.classList.toggle("rotate-180");
+        }
+      });
+    });
+  });
+</script>

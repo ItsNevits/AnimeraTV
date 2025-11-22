@@ -1,0 +1,312 @@
+---
+import EpisodeCard from "./EpisodeCard.astro";
+
+interface Props {
+  episodes: any[];
+  animeId: string;
+  animeImage?: string;
+  currentEpisodeNumber?: number;
+  showTitle?: boolean;
+  showSort?: boolean;
+  sortOrder?: string;
+}
+
+const {
+  episodes,
+  animeId,
+  animeImage,
+  currentEpisodeNumber,
+  showTitle = true,
+  showSort = false,
+  sortOrder = "desc",
+} = Astro.props;
+
+// Build sort URL preserving current query params
+const currentUrl = new URL(Astro.request.url);
+const buildSortUrl = (newSort: string) => {
+  const params = new URLSearchParams(currentUrl.search);
+  params.set("sort", newSort);
+  return `?${params.toString()}`;
+};
+---
+
+{
+  episodes && episodes.length > 0 && (
+    <section class="mt-12">
+      {showTitle && (
+        <div class="mb-6 flex items-center justify-between flex-wrap gap-4">
+          <h2 class="text-xl font-bold text-white">
+            All Episodes
+            <span class="ml-2 text-sm font-normal text-neutral-400">
+              (<span id="episode-count">{episodes.length}</span>)
+            </span>
+          </h2>
+          <div class="flex items-center gap-4 flex-wrap">
+            {showSort && (
+              <div class="flex items-center gap-2">
+                <span class="text-sm text-neutral-400">Sort:</span>
+                <div class="flex gap-2">
+                  <a
+                    href={buildSortUrl("desc")}
+                    class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                      sortOrder === "desc"
+                        ? "bg-white border-white text-black"
+                        : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-600"
+                    }`}
+                  >
+                    Newest First
+                  </a>
+                  <a
+                    href={buildSortUrl("asc")}
+                    class={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                      sortOrder === "asc"
+                        ? "bg-white border-white text-black"
+                        : "bg-neutral-800 border-neutral-700 text-neutral-400 hover:text-white hover:border-neutral-600"
+                    }`}
+                  >
+                    Oldest First
+                  </a>
+                </div>
+              </div>
+            )}
+            <div class="flex items-center gap-2">
+              <label for="items-per-page" class="text-sm text-neutral-400">
+                Show:
+              </label>
+              <select
+                id="items-per-page"
+                class="bg-neutral-800 text-white px-3 py-1.5 rounded-lg border border-neutral-700 focus:border-white focus:outline-none text-sm cursor-pointer"
+              >
+                {episodes.length > 6 && <option value="6" selected>6</option>}
+                {episodes.length > 12 && <option value="12">12</option>}
+                {episodes.length > 24 && <option value="24">24</option>}
+                {episodes.length > 48 && <option value="48">48</option>}
+                <option value="all">All</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+      <div id="episodes-container" class="space-y-3">
+        {episodes.map((episode: any) => (
+          <EpisodeCard
+            id={episode.id}
+            number={episode.number}
+            title={episode.title}
+            isFiller={episode.isFiller}
+            animeId={animeId}
+            isActive={
+              currentEpisodeNumber
+                ? episode.number === currentEpisodeNumber
+                : false
+            }
+            image={episode.image || animeImage}
+          />
+        ))}
+      </div>
+      <div
+        id="pagination"
+        class="mt-8 flex justify-center items-center gap-2 flex-wrap"
+      />
+    </section>
+  )
+}
+
+<script define:vars={{ episodes, animeId, animeImage, currentEpisodeNumber }}>
+  let currentPage = 1;
+  // Set initial itemsPerPage based on episode count
+  let itemsPerPage = episodes.length > 6 ? 6 : "all";
+
+  function renderEpisodes() {
+    const container = document.getElementById("episodes-container");
+    const pagination = document.getElementById("pagination");
+    const countSpan = document.getElementById("episode-count");
+
+    if (!container || !pagination) return;
+
+    const totalPages =
+      itemsPerPage === "all" ? 1 : Math.ceil(episodes.length / itemsPerPage);
+    const startIndex =
+      itemsPerPage === "all" ? 0 : (currentPage - 1) * itemsPerPage;
+    const endIndex =
+      itemsPerPage === "all" ? episodes.length : startIndex + itemsPerPage;
+    const displayedEpisodes = episodes.slice(startIndex, endIndex);
+
+    // Update count
+    if (countSpan) {
+      countSpan.textContent = episodes.length;
+    }
+
+    // Render episodes
+    container.innerHTML = displayedEpisodes
+      .map((episode) => {
+        const isActive = currentEpisodeNumber
+          ? episode.number === currentEpisodeNumber
+          : false;
+        const episodeImage = episode.image || animeImage || "";
+        const episodeTitle =
+          episode.title && episode.title !== `Episode ${episode.number}`
+            ? episode.title
+            : `Episode ${episode.number}`;
+
+        return `
+        <a
+          href="/watch/${animeId}/episode/${episode.number}"
+          data-astro-prefetch="tap"
+          class="group flex items-center gap-4 overflow-hidden rounded-lg border bg-neutral-900/50 p-3 transition-all duration-200 hover:bg-neutral-800/70 ${isActive ? "border-white shadow-lg shadow-white/10" : "border-neutral-800 hover:border-neutral-700"}"
+        >
+          <!-- Thumbnail -->
+          <div class="relative h-20 w-36 flex-shrink-0 overflow-hidden rounded-md bg-neutral-950">
+            ${
+              episodeImage
+                ? `
+              <img
+                src="${episodeImage}"
+                alt="Episode ${episode.number}"
+                class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                loading="lazy"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+            `
+                : `
+              <div class="flex h-full w-full items-center justify-center bg-neutral-900">
+                <svg class="h-8 w-8 text-neutral-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+              </div>
+            `
+            }
+            <!-- Episode number badge -->
+            <div class="absolute bottom-1.5 left-1.5">
+              <span class="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-bold backdrop-blur-sm ${isActive ? "bg-white text-black" : "bg-black/70 text-white"}">
+                EP ${episode.number}
+              </span>
+            </div>
+          </div>
+
+          <!-- Episode info -->
+          <div class="min-w-0 flex-1">
+            <h3 class="mb-1 line-clamp-2 text-sm font-medium leading-snug transition-colors ${isActive ? "text-white" : "text-neutral-300 group-hover:text-white"}">
+              ${episodeTitle}
+            </h3>
+            ${episode.isFiller ? '<span class="inline-flex items-center rounded bg-yellow-600/90 px-2 py-0.5 text-xs font-semibold text-white">Filler</span>' : ""}
+          </div>
+
+          <!-- Play button -->
+          <div class="flex-shrink-0">
+            <div class="flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200 ${isActive ? "bg-white text-black" : "bg-neutral-800 text-white group-hover:bg-white group-hover:text-black"}">
+              <svg class="ml-0.5 h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path>
+              </svg>
+            </div>
+          </div>
+        </a>
+      `;
+      })
+      .join("");
+
+    // Render pagination
+    if (itemsPerPage !== "all" && totalPages > 1) {
+      const maxButtons = 7;
+      let startPage = Math.max(1, currentPage - Math.floor(maxButtons / 2));
+      let endPage = Math.min(totalPages, startPage + maxButtons - 1);
+
+      if (endPage - startPage < maxButtons - 1) {
+        startPage = Math.max(1, endPage - maxButtons + 1);
+      }
+
+      let buttons = "";
+
+      // Previous button
+      buttons += `
+        <button
+          class="px-3 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
+          ${currentPage === 1 ? "disabled" : ""}
+          onclick="changePage(${currentPage - 1})"
+        >
+          ←
+        </button>
+      `;
+
+      // First page
+      if (startPage > 1) {
+        buttons += `
+          <button
+            class="px-3 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 hover:bg-neutral-700 transition-colors text-sm cursor-pointer"
+            onclick="changePage(1)"
+          >
+            1
+          </button>
+        `;
+        if (startPage > 2) {
+          buttons += '<span class="px-2 text-neutral-400">...</span>';
+        }
+      }
+
+      // Page numbers
+      for (let i = startPage; i <= endPage; i++) {
+        buttons += `
+          <button
+            class="px-3 py-2 rounded-lg border transition-colors text-sm cursor-pointer ${
+              i === currentPage
+                ? "bg-white text-black border-white"
+                : "bg-neutral-800 text-white border-neutral-700 hover:bg-neutral-700"
+            }"
+            onclick="changePage(${i})"
+          >
+            ${i}
+          </button>
+        `;
+      }
+
+      // Last page
+      if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+          buttons += '<span class="px-2 text-neutral-400">...</span>';
+        }
+        buttons += `
+          <button
+            class="px-3 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 hover:bg-neutral-700 transition-colors text-sm cursor-pointer"
+            onclick="changePage(${totalPages})"
+          >
+            ${totalPages}
+          </button>
+        `;
+      }
+
+      // Next button
+      buttons += `
+        <button
+          class="px-3 py-2 rounded-lg bg-neutral-800 text-white border border-neutral-700 hover:bg-neutral-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm cursor-pointer"
+          ${currentPage === totalPages ? "disabled" : ""}
+          onclick="changePage(${currentPage + 1})"
+        >
+          →
+        </button>
+      `;
+
+      pagination.innerHTML = buttons;
+    } else {
+      pagination.innerHTML = "";
+    }
+  }
+
+  window.changePage = function (page) {
+    currentPage = page;
+    renderEpisodes();
+  };
+
+  // Items per page selector
+  const selector = document.getElementById("items-per-page");
+  if (selector) {
+    selector.addEventListener("change", (e) => {
+      const value = e.target.value;
+      itemsPerPage = value === "all" ? "all" : parseInt(value);
+      currentPage = 1;
+      renderEpisodes();
+    });
+  }
+
+  // Initial setup
+  renderEpisodes();
+</script>

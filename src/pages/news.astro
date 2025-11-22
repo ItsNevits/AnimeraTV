@@ -1,0 +1,364 @@
+---
+export const prerender = false;
+
+import seoConfig from "@/config/seo";
+import MainLayout from "@/layouts/MainLayout.astro";
+import { NEWS, Topics } from "@consumet/extensions";
+import { Image } from "astro:assets";
+
+const ann = new NEWS.ANN();
+
+// Get current page and topic from query params
+const currentPage = parseInt(Astro.url.searchParams.get("page") || "1");
+const currentTopic = (Astro.url.searchParams.get("topic") || "anime") as string;
+
+// Validate and get the topic enum value
+const getTopicEnum = (topic: string): Topics => {
+  const topicMap: Record<string, Topics> = {
+    anime: Topics.ANIME,
+    manga: Topics.MANGA,
+    animation: Topics.ANIMATION,
+    games: Topics.GAMES,
+    novels: Topics.NOVELS,
+    "live-action": Topics.LIVE_ACTION,
+    industry: Topics.INDUSTRY,
+    music: Topics.MUSIC,
+    people: Topics.PEOPLE,
+    merch: Topics.MERCH,
+    events: Topics.EVENTS,
+  };
+  return topicMap[topic] || Topics.ANIME;
+};
+
+// Fetch anime news with selected topic
+let newsList: any[] = [];
+let hasError = false;
+
+try {
+  newsList = await ann.fetchNewsFeeds(getTopicEnum(currentTopic));
+} catch (error) {
+  console.error(
+    "Error fetching news feeds:",
+    error instanceof Error ? error.message : "Unknown error"
+  );
+  hasError = true;
+  newsList = [];
+}
+
+// Simple pagination - slice the results
+const itemsPerPage = 12;
+const startIndex = (currentPage - 1) * itemsPerPage;
+const endIndex = startIndex + itemsPerPage;
+const paginatedNews = newsList.slice(startIndex, endIndex);
+const hasNextPage = endIndex < newsList.length;
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+// Helper function to truncate text
+const truncate = (text: string, length: number): string => {
+  if (text.length <= length) return text;
+  return text.substring(0, length).trim() + "...";
+};
+---
+
+<MainLayout
+  title={"News - " + seoConfig.simpleTitle}
+  description="Stay updated with the latest anime news, announcements, and industry updates. Read about new releases, manga adaptations, and anime events."
+  keywords={[
+    ...seoConfig.keywords,
+    "anime news",
+    "anime announcements",
+    "anime industry",
+    "manga news",
+    "anime events",
+  ]}
+  type="website"
+>
+  <div class="mx-auto max-w-7xl px-6 pt-32 pb-12 lg:px-8">
+    <!-- Page Header -->
+    <div class="mb-8">
+      <h1 class="mb-3 text-4xl font-bold text-white md:text-5xl">News</h1>
+      <p class="text-lg text-neutral-400">
+        Stay updated with the latest news and announcements
+      </p>
+    </div>
+
+    <!-- Topic Filter Tabs -->
+    <div class="mb-8 overflow-x-auto pb-2">
+      <div class="flex gap-2 min-w-max">
+        {
+          [
+            { value: "anime", label: "Anime" },
+            { value: "manga", label: "Manga" },
+            { value: "animation", label: "Animation" },
+            { value: "games", label: "Games" },
+            { value: "novels", label: "Novels" },
+            { value: "live-action", label: "Live Action" },
+            { value: "industry", label: "Industry" },
+            { value: "music", label: "Music" },
+            { value: "people", label: "People" },
+            { value: "merch", label: "Merch" },
+            { value: "events", label: "Events" },
+          ].map((topic) => (
+            <a
+              href={`/news?topic=${topic.value}`}
+              class={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                currentTopic === topic.value
+                  ? "bg-white text-black"
+                  : "bg-neutral-800 text-neutral-300 hover:bg-neutral-700 hover:text-white"
+              }`}
+            >
+              {topic.label}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- News Grid -->
+    {
+      hasError ? (
+        <div class="flex min-h-[400px] items-center justify-center">
+          <div class="text-center max-w-md">
+            <svg
+              class="mx-auto mb-4 h-16 w-16 text-red-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <h3 class="mb-2 text-xl font-semibold text-white">
+              Unable to Load News
+            </h3>
+            <p class="text-neutral-400 mb-4">
+              The news service is temporarily unavailable. This usually happens
+              due to high traffic or server timeouts.
+            </p>
+            <button
+              onclick="window.location.reload()"
+              class="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : paginatedNews.length > 0 ? (
+        <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {paginatedNews.map((article: any) => (
+            <a href={`/news/${article.id}`} class="block">
+              <article class="group h-full overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900/50 backdrop-blur-sm transition-all hover:border-neutral-700 hover:bg-neutral-800/50">
+                {/* Thumbnail */}
+                {article.thumbnail && (
+                  <div class="aspect-video overflow-hidden bg-neutral-800">
+                    <img
+                      src={`/api/proxy/image?url=${encodeURIComponent(article.thumbnail)}`}
+                      alt={article.title}
+                      class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      loading="lazy"
+                      width="400"
+                      height="225"
+                    />
+                  </div>
+                )}
+
+                {/* Content */}
+                <div class="p-5 space-y-3">
+                  {/* Title */}
+                  <h2 class="text-lg font-semibold text-white line-clamp-2 group-hover:text-neutral-200 transition-colors">
+                    {article.title}
+                  </h2>
+
+                  {/* Description */}
+                  {article.preview?.intro && (
+                    <p class="text-sm text-neutral-400 line-clamp-3">
+                      {truncate(article.preview.intro, 150)}
+                    </p>
+                  )}
+
+                  {/* Meta Info */}
+                  <div class="flex items-center justify-between pt-2 text-xs text-neutral-500">
+                    {article.uploadedAt && (
+                      <time datetime={article.uploadedAt}>
+                        {formatDate(article.uploadedAt)}
+                      </time>
+                    )}
+                    <span class="inline-flex items-center gap-1 text-neutral-400 transition-colors group-hover:text-white">
+                      Read more
+                      <svg
+                        class="h-3 w-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M14 5l7 7m0 0l-7 7m7-7H3"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </article>
+            </a>
+          ))}
+        </div>
+      ) : (
+        <div class="flex min-h-[400px] items-center justify-center">
+          <div class="text-center">
+            <svg
+              class="mx-auto mb-4 h-16 w-16 text-neutral-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"
+              />
+            </svg>
+            <h3 class="mb-2 text-xl font-semibold text-white">
+              No news available
+            </h3>
+            <p class="text-neutral-400">
+              Check back later for the latest anime news
+            </p>
+          </div>
+        </div>
+      )
+    }
+
+    <!-- Pagination -->
+    {
+      paginatedNews.length > 0 && (
+        <div class="mt-12 flex items-center justify-center gap-3">
+          {/* Previous Button */}
+          {currentPage > 1 ? (
+            <a
+              href={`/news?topic=${currentTopic}&page=${currentPage - 1}`}
+              class="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-neutral-700 hover:border-neutral-600"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Previous
+            </a>
+          ) : (
+            <button
+              disabled
+              class="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-900/50 px-5 py-2.5 text-sm font-medium text-neutral-600 cursor-not-allowed"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Previous
+            </button>
+          )}
+
+          {/* Page Number */}
+          <div class="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800 px-5 py-2.5">
+            <span class="text-sm font-medium text-neutral-400">Page</span>
+            <span class="text-sm font-bold text-white">{currentPage}</span>
+          </div>
+
+          {/* Next Button */}
+          {hasNextPage ? (
+            <a
+              href={`/news?topic=${currentTopic}&page=${currentPage + 1}`}
+              class="flex items-center gap-2 rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+            >
+              Next
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </a>
+          ) : (
+            <button
+              disabled
+              class="flex items-center gap-2 rounded-lg bg-neutral-900/50 px-5 py-2.5 text-sm font-medium text-neutral-600 cursor-not-allowed"
+            >
+              Next
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
+      )
+    }
+  </div>
+</MainLayout>

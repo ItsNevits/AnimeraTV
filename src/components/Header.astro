@@ -1,0 +1,447 @@
+---
+const path = Astro.url.pathname;
+---
+
+<header
+  class="top-0 left-0 right-0 z-50 fixed w-full bg-neutral-900/50 backdrop-blur-sm border-b border-neutral-800"
+>
+  <nav class="mx-auto max-w-7xl px-6 lg:px-8">
+    <div class="flex h-20 items-center justify-between gap-8">
+      <!-- Left: Logo and Navigation -->
+      <div class="flex items-center gap-8">
+        <!-- Logo -->
+        <a href="/" class="flex items-center">
+          <h1 class="text-2xl font-bold tracking-tight text-white flex gap-1">
+            Animera <span
+              class="bg-orange-500 px-1 rounded-md text-xl flex items-center justify-center"
+              >TV</span
+            >
+          </h1>
+        </a>
+
+        <!-- Navigation Links -->
+        <ul class="hidden md:flex md:items-center md:gap-6">
+          <li>
+            <a
+              href="/"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Home
+            </a>
+          </li>
+          <li>
+            <a
+              href="/browse"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/browse"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Browse
+            </a>
+          </li>
+          <li>
+            <a
+              href="/top-airing"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/top-airing"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Top Airing
+            </a>
+          </li>
+          <li>
+            <a
+              href="/popular"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/popular"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Popular
+            </a>
+          </li>
+          <li>
+            <a
+              href="/recent"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/recent"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Recent
+            </a>
+          </li>
+          <li>
+            <a
+              href="/schedule"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/schedule"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              Schedule
+            </a>
+          </li>
+          <li>
+            <a
+              href="/news"
+              class:list={[
+                "text-sm font-medium transition-colors",
+                path === "/news"
+                  ? "text-white"
+                  : "text-neutral-400 hover:text-white",
+              ]}
+            >
+              News
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Center: Search Bar -->
+      <div class="hidden lg:flex flex-1 max-w-md">
+        <form class="relative w-full" action="/search" method="GET">
+          <div
+            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+          >
+            <svg
+              class="h-4 w-4 text-neutral-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input
+            type="text"
+            name="q"
+            id="desktop-search-input"
+            placeholder="Search anime..."
+            class="w-full rounded-lg border border-neutral-700/50 bg-neutral-900/50 py-2 pl-10 pr-12 text-sm text-white placeholder-neutral-500 backdrop-blur-sm transition-colors focus:border-neutral-600 focus:outline-none focus:ring-0"
+          />
+          <button
+            type="submit"
+            class="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 transition-colors hover:text-white"
+            aria-label="Search"
+          >
+            <svg
+              class="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+
+      <!-- Right: Buttons -->
+      <div class="flex items-center gap-3">
+        <!-- Mobile Search Button -->
+        <button
+          class="lg:hidden rounded-lg p-2 text-neutral-400 transition-colors hover:text-white"
+          aria-label="Search"
+          id="mobile-search-btn"
+        >
+          <svg
+            class="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </button>
+
+        <!-- Mobile Menu Button -->
+        <button
+          class="md:hidden rounded-lg p-2 text-white transition-colors hover:text-neutral-300"
+          aria-label="Menu"
+          id="mobile-menu-btn"
+        >
+          <svg
+            class="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            id="menu-icon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+          <svg
+            class="h-6 w-6 hidden"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            id="close-icon"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile Search Panel -->
+    <div class="hidden lg:hidden" id="mobile-search">
+      <div class="px-6 py-4">
+        <form class="relative w-full" action="/search" method="GET">
+          <div
+            class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"
+          >
+            <svg
+              class="h-4 w-4 text-neutral-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <input
+            type="text"
+            name="q"
+            id="mobile-search-input"
+            placeholder="Search anime..."
+            class="w-full rounded-lg border border-neutral-700 bg-neutral-900 py-2.5 pl-10 pr-12 text-sm text-white placeholder-neutral-500 transition-colors focus:border-white focus:outline-none focus:ring-2 focus:ring-white/20"
+          />
+          <button
+            type="submit"
+            class="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 transition-colors hover:text-white"
+            aria-label="Search"
+          >
+            <svg
+              class="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div class="hidden md:hidden" id="mobile-menu">
+      <div class="space-y-1 px-6 pb-4 pt-2">
+        <a
+          href="/"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Home
+        </a>
+        <a
+          href="/browse"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/browse"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Browse
+        </a>
+        <a
+          href="/top-airing"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/top-airing"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Top Airing
+        </a>
+        <a
+          href="/popular"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/popular"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Popular
+        </a>
+        <a
+          href="/recent"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/recent"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Recent
+        </a>
+        <a
+          href="/schedule"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/schedule"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          Schedule
+        </a>
+        <a
+          href="/news"
+          class:list={[
+            "block rounded-lg px-3 py-2 text-base font-medium transition-colors hover:bg-neutral-800",
+            path === "/news"
+              ? "text-white bg-neutral-800"
+              : "text-neutral-400 hover:text-white",
+          ]}
+        >
+          News
+        </a>
+      </div>
+    </div>
+  </nav>
+</header>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    // Update active navigation links
+    function updateActiveLinks() {
+      const currentPath = window.location.pathname;
+
+      // Update desktop nav links
+      document.querySelectorAll("nav a[href]").forEach((link) => {
+        const href = link.getAttribute("href");
+        if (href === currentPath) {
+          link.classList.add("text-white");
+          link.classList.remove("text-neutral-400");
+          // For mobile links
+          if (link.classList.contains("block")) {
+            link.classList.add("bg-neutral-800");
+          }
+        } else {
+          link.classList.remove("text-white");
+          link.classList.add("text-neutral-400");
+          // For mobile links
+          if (link.classList.contains("block")) {
+            link.classList.remove("bg-neutral-800");
+          }
+        }
+      });
+    }
+
+    // Update on initial load
+    updateActiveLinks();
+
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById("mobile-menu-btn");
+    const mobileMenu = document.getElementById("mobile-menu");
+    const menuIcon = document.getElementById("menu-icon");
+    const closeIcon = document.getElementById("close-icon");
+
+    mobileMenuBtn?.addEventListener("click", () => {
+      // Close search if open
+      mobileSearch?.classList.add("hidden");
+
+      // Toggle menu
+      mobileMenu?.classList.toggle("hidden");
+      menuIcon?.classList.toggle("hidden");
+      closeIcon?.classList.toggle("hidden");
+    });
+
+    // Mobile search toggle
+    const mobileSearchBtn = document.getElementById("mobile-search-btn");
+    const mobileSearch = document.getElementById("mobile-search");
+    const mobileSearchInput = document.getElementById("mobile-search-input");
+
+    mobileSearchBtn?.addEventListener("click", () => {
+      // Close menu if open
+      mobileMenu?.classList.add("hidden");
+      menuIcon?.classList.remove("hidden");
+      closeIcon?.classList.add("hidden");
+
+      // Toggle search
+      mobileSearch?.classList.toggle("hidden");
+
+      // Focus input when opening
+      if (!mobileSearch?.classList.contains("hidden")) {
+        setTimeout(() => {
+          mobileSearchInput?.focus();
+        }, 100);
+      }
+    });
+
+    // Close menu/search when clicking outside
+    document.addEventListener("click", (e) => {
+      const target = e.target as Node;
+
+      // Close menu if clicking outside
+      if (!mobileMenuBtn?.contains(target) && !mobileMenu?.contains(target)) {
+        mobileMenu?.classList.add("hidden");
+        menuIcon?.classList.remove("hidden");
+        closeIcon?.classList.add("hidden");
+      }
+
+      // Close search if clicking outside
+      if (
+        !mobileSearchBtn?.contains(target) &&
+        !mobileSearch?.contains(target)
+      ) {
+        mobileSearch?.classList.add("hidden");
+      }
+    });
+  });
+</script>

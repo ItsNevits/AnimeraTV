@@ -1,0 +1,240 @@
+---
+export const prerender = false;
+
+import MainLayout from "@/layouts/MainLayout.astro";
+import AnimeCard from "@/components/AnimeCard.astro";
+import { ANIME } from "@consumet/extensions";
+import seoConfig from "@/config/seo";
+
+const zoro = new ANIME.Zoro();
+
+// Get current date and calculate week days
+const today = new Date();
+const todayDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+
+// Map day index to day name
+const dayNames = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+];
+const todayDayName = dayNames[todayDayIndex];
+
+// Get selected day from URL, default to today's day name
+const currentDay = Astro.url.searchParams.get("day") || todayDayName;
+
+// Calculate date based on selected day
+const getDateForDay = (dayOffset: number) => {
+  const date = new Date(today);
+  date.setDate(today.getDate() + dayOffset);
+  return date.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+};
+
+// Map day names to offsets
+const dayOffsets: { [key: string]: number } = {
+  monday: (1 - today.getDay() + 7) % 7 || 7,
+  tuesday: (2 - today.getDay() + 7) % 7 || 7,
+  wednesday: (3 - today.getDay() + 7) % 7 || 7,
+  thursday: (4 - today.getDay() + 7) % 7 || 7,
+  friday: (5 - today.getDay() + 7) % 7 || 7,
+  saturday: (6 - today.getDay() + 7) % 7 || 7,
+  sunday: (0 - today.getDay() + 7) % 7 || 7,
+};
+
+// Adjust for proper week navigation
+Object.keys(dayOffsets).forEach((day) => {
+  if (dayOffsets[day] > 6) {
+    dayOffsets[day] = dayOffsets[day] - 7;
+  }
+});
+
+const selectedDate = getDateForDay(dayOffsets[currentDay] || 0);
+
+// Fetch schedule for selected date with error handling
+let scheduleData: any = { results: [] };
+try {
+  scheduleData = await zoro.fetchSchedule(selectedDate);
+} catch (error) {
+  console.error(
+    "Error fetching schedule:",
+    error instanceof Error ? error.message : "Unknown error"
+  );
+}
+const scheduleList = scheduleData?.results || [];
+
+// Fetch detailed info for each anime to get images
+// Process in chunks to avoid overwhelming the API
+const CHUNK_SIZE = 5;
+const animeList: any[] = [];
+const seenAnimeIds = new Set<string>();
+
+for (let i = 0; i < scheduleList.length; i += CHUNK_SIZE) {
+  const chunk = scheduleList.slice(i, i + CHUNK_SIZE);
+
+  const chunkResults = await Promise.allSettled(
+    chunk.map(async (scheduleItem: any) => {
+      try {
+        const animeInfo = await zoro.fetchAnimeInfo(scheduleItem.id);
+        return {
+          ...scheduleItem,
+          image: animeInfo.image,
+          title: animeInfo.title,
+        };
+      } catch (error) {
+        console.error(`Failed to fetch info for ${scheduleItem.id}:`, error);
+        return scheduleItem;
+      }
+    })
+  );
+
+  // Add successfully fetched results, avoiding duplicates
+  chunkResults.forEach((result) => {
+    if (result.status === "fulfilled") {
+      const anime = result.value;
+      // Only add if we haven't seen this anime ID before
+      if (!seenAnimeIds.has(anime.id)) {
+        seenAnimeIds.add(anime.id);
+        animeList.push(anime);
+      }
+    }
+  });
+
+  // Add a small delay between chunks
+  if (i + CHUNK_SIZE < scheduleList.length) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+}
+
+// Helper function to get title as string
+const getTitle = (title: any): string => {
+  if (typeof title === "string") return title;
+  if (title && typeof title === "object" && "english" in title)
+    return title.english || title.romaji || "";
+  return "";
+};
+
+// Days of the week for navigation
+const daysOfWeek = [
+  { key: "monday", label: "Monday" },
+  { key: "tuesday", label: "Tuesday" },
+  { key: "wednesday", label: "Wednesday" },
+  { key: "thursday", label: "Thursday" },
+  { key: "friday", label: "Friday" },
+  { key: "saturday", label: "Saturday" },
+  { key: "sunday", label: "Sunday" },
+];
+---
+
+<MainLayout
+  title={"Release Schedule - " + seoConfig.simpleTitle}
+  description="Check the weekly anime release schedule. See when new episodes of your favorite anime air throughout the week. Never miss a new release!"
+  keywords={[
+    ...seoConfig.keywords,
+    "anime schedule",
+    "release schedule",
+    "weekly anime",
+    "anime calendar",
+    "new episodes",
+  ]}
+>
+  <div class="mx-auto max-w-7xl px-6 pt-32 pb-12 lg:px-8">
+    <!-- Page Header -->
+    <div class="mb-12">
+      <h1 class="mb-3 text-4xl font-bold text-white md:text-5xl">
+        Release Schedule
+      </h1>
+      <p class="text-lg text-neutral-400">
+        Check when your favorite anime episodes air
+      </p>
+    </div>
+
+    <!-- Day Navigation -->
+    <div class="mb-8 overflow-x-auto">
+      <div class="flex gap-2 min-w-max pb-1.5">
+        {
+          daysOfWeek.map((day) => (
+            <a
+              href={`/schedule?day=${day.key}`}
+              class={`px-6 py-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                currentDay === day.key
+                  ? "bg-white text-black"
+                  : "bg-neutral-800 text-neutral-300 border border-neutral-700 hover:bg-neutral-700 hover:border-neutral-600"
+              }`}
+            >
+              {day.label}
+            </a>
+          ))
+        }
+      </div>
+    </div>
+
+    <!-- Schedule Grid -->
+    {
+      animeList.length > 0 ? (
+        <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {animeList.map((anime: any) => (
+            <div class="relative">
+              <AnimeCard
+                id={anime.id}
+                title={getTitle(anime.title)}
+                image={anime.image || ""}
+                type={anime.airingEpisode || ""}
+                duration={anime.airingTime || ""}
+                jstTime={anime.airingTime || ""}
+                scheduleDate={selectedDate}
+              />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div class="flex min-h-[400px] items-center justify-center">
+          <div class="text-center max-w-md">
+            <svg
+              class="mx-auto mb-4 h-16 w-16 text-neutral-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h3 class="mb-2 text-xl font-semibold text-white">
+              Unable to Load Schedule
+            </h3>
+            <p class="text-neutral-400 mb-4">
+              The service is temporarily unavailable. This usually happens due
+              to high traffic or server timeouts.
+            </p>
+            <button
+              onclick="window.location.reload()"
+              class="inline-flex items-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+            >
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Try Again
+            </button>
+          </div>
+        </div>
+      )
+    }
+  </div>
+</MainLayout>

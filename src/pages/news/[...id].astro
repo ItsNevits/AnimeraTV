@@ -1,0 +1,274 @@
+---
+export const prerender = false;
+
+import seoConfig from "@/config/seo";
+import MainLayout from "@/layouts/MainLayout.astro";
+import { NEWS } from "@consumet/extensions";
+import { Image } from "astro:assets";
+
+const ann = new NEWS.ANN();
+
+// Get the news ID from the URL (it comes as a string with the rest parameter)
+const { id } = Astro.params;
+
+if (!id) {
+  return Astro.redirect("/news");
+}
+
+// The id is the full path: "2025-11-16/gaea-tima-the-gigantis-manga-has-anime-in-the-works/.231091"
+const newsId = id;
+
+// Fetch news details
+let newsInfo;
+try {
+  newsInfo = await ann.fetchNewsInfo(newsId);
+} catch (error) {
+  console.error("Error fetching news:", error);
+  return Astro.redirect("/news");
+}
+
+// Helper function to format date
+const formatDate = (dateString: string): string => {
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  } catch {
+    return dateString;
+  }
+};
+
+// SEO description from news intro or default
+const description = (newsInfo as any).preview?.intro
+  ? (newsInfo as any).preview.intro.substring(0, 160) + "..."
+  : newsInfo.intro?.substring(0, 160) + "..." ||
+    `Read the latest anime news: ${newsInfo.title}`;
+
+// Article structured data
+const articleSchema = {
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  headline: newsInfo.title,
+  image: newsInfo.thumbnail || seoConfig.defaultImage,
+  datePublished: newsInfo.uploadedAt,
+  dateModified: newsInfo.uploadedAt,
+  author: {
+    "@type": "Organization",
+    name: seoConfig.organization.name,
+  },
+  publisher: {
+    "@type": "Organization",
+    name: seoConfig.organization.name,
+    logo: {
+      "@type": "ImageObject",
+      url: `${seoConfig.siteUrl}${seoConfig.organization.logo}`,
+    },
+  },
+  description: description,
+};
+---
+
+<MainLayout
+  title={`${newsInfo.title} - News - ${seoConfig.simpleTitle}`}
+  description={description}
+  image={newsInfo.thumbnail}
+  type="article"
+  keywords={[...seoConfig.keywords, "anime news", newsInfo.title]}
+>
+  <article class="mx-auto max-w-4xl px-6 pt-32 pb-12 lg:px-8">
+    <!-- Back Button -->
+    <a
+      href="/news"
+      class="mb-8 inline-flex items-center gap-2 text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+    >
+      <svg
+        class="h-4 w-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M15 19l-7-7 7-7"></path>
+      </svg>
+      Back to News
+    </a>
+
+    <!-- Article Header -->
+    <section class="mb-8">
+      <h1 class="mb-4 text-4xl font-bold leading-tight text-white md:text-5xl">
+        {newsInfo.title}
+      </h1>
+
+      <!-- Meta Information -->
+      <div class="flex flex-wrap items-center gap-4 text-sm text-neutral-400">
+        {
+          newsInfo.uploadedAt && (
+            <time datetime={newsInfo.uploadedAt}>
+              {formatDate(newsInfo.uploadedAt)}
+            </time>
+          )
+        }
+      </div>
+    </section>
+
+    <!-- Content Layout: Image Left, Content Right -->
+    <section class="grid gap-8 lg:grid-cols-[350px_1fr]">
+      <!-- Featured Image (Sticky on large screens) -->
+      {
+        newsInfo.thumbnail && (
+          <div class="lg:sticky lg:top-24 lg:self-start">
+            <div class="overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900/50">
+              <div class="aspect-3/4 w-full">
+                <img
+                  src={`/api/proxy/image?url=${encodeURIComponent(newsInfo.thumbnail)}`}
+                  alt={newsInfo.title}
+                  class="h-full w-full object-cover"
+                  loading="eager"
+                  width="350"
+                  height="467"
+                />
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      <!-- Article Content -->
+      <div class="space-y-8">
+        <!-- Article Intro/Preview -->
+        {
+          newsInfo.intro && (
+            <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6 text-lg leading-relaxed text-neutral-300">
+              {newsInfo.intro}
+            </div>
+          )
+        }
+
+        <!-- Article Description -->
+        {
+          newsInfo.description && (
+            <div class="rounded-xl border border-neutral-800 bg-neutral-900/50 p-6">
+              <div
+                id="article-content"
+                class="prose prose-invert prose-lg max-w-none line-clamp-15 text-neutral-400 overflow-hidden transition-all duration-300"
+                set:html={newsInfo.description}
+              />
+              <button
+                id="read-more-btn"
+                class="mt-4 inline-flex items-center gap-2 text-sm font-medium text-neutral-400 transition-colors hover:text-white"
+              >
+                <span id="btn-text">Read More</span>
+                <svg
+                  id="btn-icon"
+                  class="h-4 w-4 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 9l-7 7-7-7"
+                  />
+                </svg>
+              </button>
+            </div>
+          )
+        }
+      </div>
+    </section>
+
+    <!-- Article Footer -->
+    <section class="mt-12 border-t border-neutral-800 pt-8">
+      <div
+        class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <a
+          href="/news"
+          class="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900/50 px-6 py-3 text-sm font-semibold text-white backdrop-blur-sm transition-all hover:border-neutral-600 hover:bg-neutral-800/70"
+        >
+          <svg
+            class="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Back to News
+        </a>
+
+        {
+          newsInfo.url && (
+            <a
+              href={newsInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-6 py-3 text-sm font-semibold text-black transition-all hover:bg-neutral-200"
+            >
+              Read Original Article
+              <svg
+                class="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                />
+              </svg>
+            </a>
+          )
+        }
+      </div>
+    </section>
+  </article>
+
+  <!-- Structured Data -->
+  <Fragment slot="structured-data">
+    <script
+      is:inline
+      type="application/ld+json"
+      set:html={JSON.stringify(articleSchema)}
+    />
+  </Fragment>
+</MainLayout>
+
+<script>
+  document.addEventListener("astro:page-load", () => {
+    const content = document.getElementById("article-content");
+    const btn = document.getElementById("read-more-btn");
+    const btnText = document.getElementById("btn-text");
+    const btnIcon = document.getElementById("btn-icon");
+
+    let isExpanded = false;
+
+    btn?.addEventListener("click", () => {
+      isExpanded = !isExpanded;
+
+      if (isExpanded) {
+        content?.classList.remove("line-clamp-15");
+        btnText!.textContent = "Show Less";
+        btnIcon?.classList.add("rotate-180");
+      } else {
+        content?.classList.add("line-clamp-15");
+        btnText!.textContent = "Read More";
+        btnIcon?.classList.remove("rotate-180");
+      }
+    });
+  });
+</script>

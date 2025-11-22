@@ -1,0 +1,526 @@
+---
+export const prerender = false;
+
+import MainLayout from "@/layouts/MainLayout.astro";
+import EpisodeGrid from "@/components/EpisodeGrid.astro";
+import { StreamingServers } from "@consumet/extensions";
+import { fetchAnimeInfo, fetchEpisodeSources } from "@/lib/anime-api";
+import seoConfig from "@/config/seo";
+
+// Check if video player is enabled via environment variable
+const isVideoPlayerEnabled = import.meta.env.ENABLE_VIDEO_PLAYER === 'true';
+
+const { id, number } = Astro.params;
+
+if (!id || !number) {
+  return Astro.redirect("/");
+}
+
+// Parse episode number from URL (e.g., "1", "2", etc.)
+const episodeNumber = parseInt(number) || 1;
+
+// Get sort parameter from URL (default: desc = newest first)
+const sortOrder = Astro.url.searchParams.get("sort") || "desc";
+
+// Fetch anime info (with cache)
+const animeInfo: any = await fetchAnimeInfo(id);
+
+// Sort episodes on server-side
+if (animeInfo.episodes && animeInfo.episodes.length > 0) {
+  animeInfo.episodes = [...animeInfo.episodes].sort((a: any, b: any) => {
+    return sortOrder === "desc" ? b.number - a.number : a.number - b.number;
+  });
+}
+
+// Helper function to get title as string
+const getTitle = (title: any): string => {
+  if (typeof title === "string") return title;
+  if (title && typeof title === "object" && "english" in title)
+    return title.english || title.romaji || "";
+  return "";
+};
+
+// Find current episode by number
+const currentEpisode = animeInfo.episodes?.find(
+  (ep: any) => ep.number === episodeNumber
+);
+
+if (!currentEpisode) {
+  return Astro.redirect(`/anime/${id}`);
+}
+
+const currentEpisodeNumber = currentEpisode.number;
+const episodeId = currentEpisode.id;
+
+// Clean the episode ID by removing any extra suffixes like $both, $sub, $dub
+const cleanEpisodeId = episodeId.replace(/\$(both|sub|dub)$/i, "");
+
+// Fetch sources only if video player is enabled
+let videoSources: any = null;
+let subtitles: any = null;
+let errorMessage = null;
+
+if (isVideoPlayerEnabled) {
+  try {
+    const episodeSources: any = await fetchEpisodeSources(
+      cleanEpisodeId,
+      StreamingServers.VidCloud
+    );
+
+    const sources = episodeSources?.sources || [];
+    const subs = episodeSources?.subtitles || [];
+
+    // Clean sources to avoid circular references
+    videoSources = sources.map((s: any) => ({
+      url: s.url,
+      quality: s.quality || "default",
+      isM3U8: s.isM3U8 || false,
+      isDASH: s.isDASH || false,
+      type: s.type || "hls",
+    }));
+
+    subtitles = Array.isArray(subs)
+      ? subs.map((sub: any) => ({
+          url: sub.url,
+          lang: sub.lang,
+        }))
+      : [];
+  } catch (error: any) {
+    console.error("Error fetching episode sources:", error);
+    errorMessage = error.message || "Unknown error occurred";
+  }
+}
+---
+
+<MainLayout
+  title={`${getTitle(animeInfo.title)} - Episode ${currentEpisodeNumber} - ${seoConfig.simpleTitle}`}
+>
+  <div class="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8">
+    <!-- Breadcrumb -->
+    <nav class="mb-6 flex items-center gap-2 text-sm text-neutral-400">
+      <a href="/" class="shrink-0 transition-colors hover:text-white">Home</a>
+      <span class="shrink-0">/</span>
+      <a
+        href={`/anime/${id}`}
+        class="truncate transition-colors hover:text-white"
+        title={getTitle(animeInfo.title)}
+      >
+        {getTitle(animeInfo.title)}
+      </a>
+      <span class="shrink-0">/</span>
+      <span class="shrink-0 text-white">Episode {currentEpisodeNumber}</span>
+    </nav>
+
+    <!-- Video Player -->
+    <div class="mb-8">
+      <div class="relative aspect-video overflow-hidden rounded-lg bg-black">
+        {
+          !isVideoPlayerEnabled ? (
+            <div class="flex h-full items-center justify-center">
+              <div class="text-center px-4 max-w-2xl">
+                <svg
+                  class="mx-auto mb-4 h-16 w-16 text-yellow-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h3 class="mb-2 text-xl font-semibold text-white">
+                  Video Player Disabled
+                </h3>
+                <p class="text-neutral-400 mb-4">
+                  The video player is currently disabled for legal compliance. This is an open-source project for educational purposes only.
+                </p>
+                <p class="text-sm text-neutral-500">
+                  You can browse anime information, schedules, and metadata.
+                </p>
+              </div>
+            </div>
+          ) : !videoSources || videoSources.length === 0 ? (
+            <div class="flex h-full items-center justify-center">
+              <div class="text-center px-4 max-w-2xl">
+                <svg
+                  class="mx-auto mb-4 h-16 w-16 text-red-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <h3 class="mb-2 text-xl font-semibold text-white">
+                  Error Loading Video
+                </h3>
+                <p class="text-neutral-400 mb-4">
+                  Could not fetch video sources for this episode
+                </p>
+                {errorMessage && (
+                  <div class="rounded-lg bg-neutral-900 p-4 text-left">
+                    <p class="text-sm text-red-400 font-mono">{errorMessage}</p>
+                    <p class="mt-2 text-xs text-neutral-500">
+                      Episode ID: {cleanEpisodeId}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <video id="video-player" controls class="h-full w-full">
+              Your browser does not support the video tag.
+            </video>
+          )
+        }
+      </div>
+
+      <!-- Video Controls (Quality and Subtitle Selectors) -->
+      {
+        videoSources && videoSources.length > 0 && (
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            {videoSources.length > 1 && (
+              <div class="flex items-center gap-2">
+                <label
+                  for="quality-selector"
+                  class="text-sm font-medium text-neutral-400"
+                >
+                  Quality:
+                </label>
+                <select
+                  id="quality-selector"
+                  class="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:border-neutral-500 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/20"
+                >
+                  {videoSources.map((source: any, index: number) => (
+                    <option value={index}>{source.quality || "Default"}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {subtitles && subtitles.length > 0 && (
+              <div class="flex items-center gap-2">
+                <label
+                  for="subtitle-selector"
+                  class="text-sm font-medium text-neutral-400"
+                >
+                  Subtitles:
+                </label>
+                <select
+                  id="subtitle-selector"
+                  class="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm font-medium text-white transition-colors hover:border-neutral-500 focus:border-white focus:outline-none focus:ring-2 focus:ring-white/20"
+                >
+                  <option value="-1">Off</option>
+                  {subtitles.map((subtitle: any, index: number) => (
+                    <option value={index} selected={index === 0}>
+                      {subtitle.lang || `Subtitle ${index + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      <!-- Episode Info -->
+      <div class="mt-4">
+        <h1 class="text-2xl font-bold text-white">
+          {getTitle(animeInfo.title)} - Episode {currentEpisodeNumber}
+        </h1>
+        {
+          currentEpisode?.title &&
+            currentEpisode.title !== `Episode ${currentEpisodeNumber}` && (
+              <p class="mt-1 text-neutral-400">{currentEpisode.title}</p>
+            )
+        }
+      </div>
+
+      <!-- Episode Navigation -->
+      <div class="mt-4 flex gap-3">
+        {
+          animeInfo.episodes?.find(
+            (ep: any) => ep.number === currentEpisodeNumber - 1
+          ) && (
+            <a
+              href={`/watch/${id}/episode/${currentEpisodeNumber - 1}`}
+              class="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 font-medium text-white transition-colors hover:border-neutral-600 hover:bg-neutral-800"
+            >
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+              Previous
+            </a>
+          )
+        }
+        {
+          animeInfo.episodes?.find(
+            (ep: any) => ep.number === currentEpisodeNumber + 1
+          ) && (
+            <a
+              href={`/watch/${id}/episode/${currentEpisodeNumber + 1}`}
+              class="flex items-center gap-2 rounded-lg bg-white px-4 py-2 font-medium text-black transition-colors hover:bg-neutral-200"
+            >
+              Next
+              <svg
+                class="h-5 w-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </a>
+          )
+        }
+      </div>
+    </div>
+
+    <!-- All Episodes Grid -->
+    <EpisodeGrid
+      episodes={animeInfo.episodes || []}
+      animeId={id}
+      animeImage={animeInfo.image}
+      currentEpisodeNumber={currentEpisodeNumber}
+      showSort={true}
+      sortOrder={sortOrder}
+    />
+  </div>
+</MainLayout>
+
+<script is:inline define:vars={{ videoSources, subtitles }}>
+  document.addEventListener("astro:page-load", () => {
+    // Load HLS.js dynamically if not already loaded
+    if (!window.Hls) {
+      const script = document.createElement("script");
+      script.src = "https://cdn.jsdelivr.net/npm/hls.js@latest";
+      script.onload = function () {
+        initializePlayer();
+      };
+      document.head.appendChild(script);
+    } else {
+      initializePlayer();
+    }
+  });
+
+  // Video player initialization
+  let video = null;
+  let qualitySelector = null;
+  let subtitleSelector = null;
+  let hls = null;
+  let currentSourceIndex = 0;
+  let currentSubtitleIndex = 0;
+
+  // Initialize video player with source
+  function initPlayer() {
+    // Get elements
+    video = document.getElementById("video-player");
+    qualitySelector = document.getElementById("quality-selector");
+    subtitleSelector = document.getElementById("subtitle-selector");
+    if (!videoSources || videoSources.length === 0) {
+      console.error("No video sources available");
+      return;
+    }
+
+    const source = videoSources[currentSourceIndex];
+
+    // Clean up previous HLS instance
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+
+    if (source.isM3U8) {
+      // HLS playback
+      if (window.Hls?.isSupported()) {
+        hls = new Hls({
+          debug: false,
+          enableWorker: true,
+        });
+
+        // Use proxy for the master playlist
+        // The proxy will rewrite all internal URLs to also use the proxy
+        const proxyUrl = `/api/proxy/video?url=${encodeURIComponent(source.url)}`;
+        hls.loadSource(proxyUrl);
+        hls.attachMedia(video);
+
+        hls.on(window.Hls.Events.MANIFEST_PARSED, () => {
+          // Add subtitles after video is loaded
+          if (subtitles && subtitles.length > 0) {
+            // Clear existing tracks
+            const existingTracks = video.querySelectorAll("track");
+            existingTracks.forEach((track) => track.remove());
+
+            subtitles.forEach((subtitle, index) => {
+              const track = document.createElement("track");
+              track.kind = "subtitles";
+              track.label = subtitle.lang || `Subtitle ${index + 1}`;
+              track.srclang = subtitle.lang || "en";
+              // Use proxy to avoid CORS issues with subtitles
+              track.src = `/api/proxy/stream?url=${encodeURIComponent(subtitle.url)}`;
+              track.mode = "hidden"; // Start hidden
+
+              track.addEventListener("error", (e) => {
+                console.error(`✗ Subtitle error for ${subtitle.lang}:`, e);
+              });
+
+              video.appendChild(track);
+            });
+
+            // Enable first subtitle track after tracks are loaded
+            setTimeout(() => {
+              if (video.textTracks && video.textTracks.length > 0) {
+                video.textTracks[0].mode = "showing";
+                currentSubtitleIndex = 0;
+              }
+            }, 500);
+          }
+
+          // Don't autoplay - let user click play button
+          // video.play().catch((e) => console.error("Autoplay blocked:", e));
+        });
+
+        hls.on(window.Hls.Events.ERROR, (_event, data) => {
+          console.error("HLS Error:", data);
+          if (data.fatal) {
+            switch (data.type) {
+              case window.Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case window.Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                console.error("Fatal error, cannot recover");
+                hls.destroy();
+                break;
+            }
+          }
+        });
+      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        // Native HLS support (Safari)
+        video.src = source.url;
+        video.addEventListener("loadedmetadata", () => {
+          // Add subtitles for Safari
+          if (subtitles && subtitles.length > 0) {
+            subtitles.forEach((subtitle, index) => {
+              const track = document.createElement("track");
+              track.kind = "subtitles";
+              track.label = subtitle.lang || `Subtitle ${index + 1}`;
+              track.srclang = subtitle.lang || "en";
+              // Use proxy to avoid CORS issues with subtitles
+              track.src = `/api/proxy/stream?url=${encodeURIComponent(subtitle.url)}`;
+              track.mode = "hidden";
+
+              video.appendChild(track);
+            });
+
+            // Enable first subtitle track
+            setTimeout(() => {
+              if (video.textTracks && video.textTracks.length > 0) {
+                video.textTracks[0].mode = "showing";
+                currentSubtitleIndex = 0;
+              }
+            }, 500);
+          }
+
+          // Don't autoplay - let user click play button
+          // video.play().catch((e) => console.error("Autoplay blocked:", e));
+        });
+      } else {
+        console.error("HLS not supported in this browser");
+      }
+    } else {
+      // Direct video playback
+      video.src = source.url;
+      video.load();
+      video.play().catch((e) => console.error("Autoplay blocked:", e));
+    }
+  }
+
+  // Function to change subtitle track
+  function changeSubtitleTrack(index) {
+    // Disable all tracks first
+    for (let i = 0; i < video.textTracks.length; i++) {
+      video.textTracks[i].mode = "disabled";
+    }
+
+    // Enable the selected track
+    if (index >= 0 && index < video.textTracks.length) {
+      video.textTracks[index].mode = "showing";
+      currentSubtitleIndex = index;
+    }
+  }
+
+  // Function to setup event listeners
+  function setupEventListeners() {
+    // Handle subtitle change
+    if (subtitleSelector) {
+      subtitleSelector.addEventListener("change", (e) => {
+        const selectedIndex = parseInt(e.target.value);
+        changeSubtitleTrack(selectedIndex);
+      });
+    }
+
+    // Handle quality change
+    if (qualitySelector) {
+      qualitySelector.addEventListener("change", (e) => {
+        const currentTime = video.currentTime;
+        const wasPaused = video.paused;
+
+        currentSourceIndex = parseInt(e.target.value);
+        initPlayer();
+
+        // Restore playback position
+        video.addEventListener(
+          "loadedmetadata",
+          () => {
+            video.currentTime = currentTime;
+            if (!wasPaused) {
+              video.play();
+            }
+          },
+          { once: true }
+        );
+      });
+    }
+  }
+
+  // Initialize player when HLS.js is loaded
+  function initializePlayer() {
+    if (videoSources && videoSources.length > 0) {
+      initPlayer();
+      setupEventListeners();
+    }
+  }
+
+  // Clean up on page leave
+  document.addEventListener("astro:before-preparation", () => {
+    if (hls) {
+      hls.destroy();
+      hls = null;
+    }
+  });
+</script>

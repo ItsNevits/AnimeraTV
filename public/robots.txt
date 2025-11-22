@@ -1,0 +1,9 @@
+User-agent: *
+Content-signal: search=yes,ai-train=no
+
+Allow: /
+
+Disallow: /api/
+Disallow: /watch/
+
+Sitemap: https://www.animeratv.com/sitemap-index.xml
